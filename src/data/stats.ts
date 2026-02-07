@@ -3,21 +3,21 @@ import { members } from './members';
 import { initialGuests } from './guests';
 
 export const dashboardStats: DashboardStats = {
-  currentMembers: 89,
+  currentMembers: members.length,
   targetMembers: 125,
   guestsInPipeline: initialGuests.length,
-  newMembersThisMonth: 3,
+  newMembersThisMonth: 5,
   // From BLOC website
   referralsGiven: 10000,
   transactions: 9000,
 };
 
 export const chapterGoals = {
-  North: { current: 22, target: 30 },
-  South: { current: 18, target: 25 },
-  Uptown: { current: 24, target: 30 },
-  FLOC: { current: 20, target: 30 },
-  Alumni: { current: 5, target: 10 },
+  North: { current: members.filter(m => m.chapter === 'North').length, target: 30 },
+  South: { current: members.filter(m => m.chapter === 'South').length, target: 25 },
+  Uptown: { current: members.filter(m => m.chapter === 'Uptown').length, target: 30 },
+  FLOC: { current: members.filter(m => m.chapter === 'FLOC').length, target: 30 },
+  Alumni: { current: members.filter(m => m.chapter === 'Alumni').length, target: 20 },
 };
 
 // Key events from BLOC website
