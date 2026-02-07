@@ -5,10 +5,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Set basePath if deploying to a repo subdirectory (e.g., /bloc-membership-dashboard)
-  // Uncomment and update if your repo name is different:
-  // basePath: '/bloc-membership-dashboard',
-  // assetPrefix: '/bloc-membership-dashboard/',
+  // Set basePath for GitHub Pages subdirectory deployment
+  basePath: '/bloc-membership-dashboard',
+  assetPrefix: '/bloc-membership-dashboard/',
 }
 
 module.exports = nextConfig
