@@ -1,0 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-bloc-blue text-white px-4 py-2 rounded-lg font-medium
+           hover:bg-bloc-lightBlue transition-colors duration-200
+           focus:outline-none focus:ring-2 focus:ring-bloc-blue focus:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-slate-700 px-4 py-2 rounded-lg font-medium
+           border border-slate-300 hover:bg-slate-50 transition-colors duration-200
+           focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-card border border-slate-100
+           transition-shadow duration-200 hover:shadow-card-hover;
+  }
+
+  .input {
+    @apply w-full px-4 py-2.5 rounded-lg border border-slate-300
+           focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue
+           outline-none transition-all duration-200 bg-white;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full
+           text-xs font-semibold uppercase tracking-wide;
+  }
+
+  .badge-north {
+    @apply bg-emerald-100 text-emerald-700;
+  }
+
+  .badge-south {
+    @apply bg-amber-100 text-amber-700;
+  }
+
+  .badge-uptown {
+    @apply bg-purple-100 text-purple-700;
+  }
+
+  .badge-floc {
+    @apply bg-blue-100 text-blue-700;
+  }
+
+  .badge-alumni {
+    @apply bg-gray-100 text-gray-700;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-100 rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded-full hover:bg-slate-400;
+}
+
+/* Focus visible for accessibility */
+:focus-visible {
+  @apply outline-none ring-2 ring-bloc-blue ring-offset-2;
+}
+
+/* Smooth transitions */
+* {
+  @apply transition-colors duration-150;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
