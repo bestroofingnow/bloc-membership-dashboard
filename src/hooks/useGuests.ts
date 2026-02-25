@@ -41,19 +41,13 @@ function transformGuestToDb(guest: Partial<Guest>): any {
 
 export function useGuests() {
   const [guests, setGuests] = useState<Guest[]>(initialGuests);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { canEdit, session } = useAuth();
   const isConfigured = isSupabaseConfigured();
 
   const fetchGuests = useCallback(async () => {
-    if (!isConfigured) {
-      setLoading(false);
-      return;
-    }
-
-    if (!session) {
-      setLoading(false);
+    if (!isConfigured || !session) {
       return;
     }
 

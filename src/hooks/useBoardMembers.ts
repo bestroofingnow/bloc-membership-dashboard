@@ -23,19 +23,13 @@ function transformDbToBoardMember(row: any): BoardMemberWithId {
 
 export function useBoardMembers() {
   const [boardMembers, setBoardMembers] = useState<BoardMemberWithId[]>(staticBoard);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { canEdit, session } = useAuth();
   const isConfigured = isSupabaseConfigured();
 
   const fetchBoardMembers = useCallback(async () => {
-    if (!isConfigured) {
-      setLoading(false);
-      return;
-    }
-
-    if (!session) {
-      setLoading(false);
+    if (!isConfigured || !session) {
       return;
     }
 

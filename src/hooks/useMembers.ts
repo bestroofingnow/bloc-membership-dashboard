@@ -20,20 +20,13 @@ function transformDbToMember(row: any): Member {
 
 export function useMembers() {
   const [members, setMembers] = useState<Member[]>(staticMembers);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { canEdit, session } = useAuth();
   const isConfigured = isSupabaseConfigured();
 
   const fetchMembers = useCallback(async () => {
-    if (!isConfigured) {
-      setLoading(false);
-      return;
-    }
-
-    // Don't query until we have an auth session (RLS requires authenticated)
-    if (!session) {
-      setLoading(false);
+    if (!isConfigured || !session) {
       return;
     }
 

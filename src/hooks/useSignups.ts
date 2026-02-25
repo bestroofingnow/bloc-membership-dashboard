@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { getNextStepText } from '@/data/guests';
 
 export interface PublicSignup {
@@ -34,16 +35,17 @@ function transformDbToSignup(row: any): PublicSignup {
 
 export function useSignups() {
   const [signups, setSignups] = useState<PublicSignup[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { session } = useAuth();
   const isConfigured = isSupabaseConfigured();
 
   const fetchSignups = useCallback(async () => {
-    if (!isConfigured) {
-      setLoading(false);
+    if (!isConfigured || !session) {
       return;
     }
 
+    setLoading(true);
     try {
       const { data, error: fetchError } = await supabase
         .from('public_signups')
@@ -61,12 +63,12 @@ export function useSignups() {
     } finally {
       setLoading(false);
     }
-  }, [isConfigured]);
+  }, [isConfigured, session]);
 
   useEffect(() => {
     fetchSignups();
 
-    if (!isConfigured) return;
+    if (!isConfigured || !session) return;
 
     const channel = supabase
       .channel('signups-realtime')
@@ -82,7 +84,7 @@ export function useSignups() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchSignups, isConfigured]);
+  }, [fetchSignups, isConfigured, session]);
 
   const promoteToGuest = async (signupId: string): Promise<{ error: string | null }> => {
     if (!isConfigured) return { error: 'Not configured' };

@@ -37,19 +37,13 @@ function transformDbToTarget(row: DbIndustryTarget): IndustryTarget {
 export function useTargets() {
   const [categories, setCategories] = useState<IndustryCategory[]>(staticTargets);
   const [categoryIds, setCategoryIds] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { canEdit, session } = useAuth();
   const isConfigured = isSupabaseConfigured();
 
   const fetchTargets = useCallback(async () => {
-    if (!isConfigured) {
-      setLoading(false);
-      return;
-    }
-
-    if (!session) {
-      setLoading(false);
+    if (!isConfigured || !session) {
       return;
     }
 
