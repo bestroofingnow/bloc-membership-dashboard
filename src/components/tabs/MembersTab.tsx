@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Users, Building2, Briefcase, Download } from 'lucide-react';
+import { Users, Building2, Briefcase, Download, Loader2 } from 'lucide-react';
 import { Card, Badge, SearchInput, Button } from '@/components/ui';
-import { members, getChapterCounts } from '@/data/members';
+import { useMembers } from '@/hooks/useMembers';
 import { ChapterName, Member } from '@/types';
 
 type ChapterFilter = ChapterName | 'all';
@@ -18,10 +18,9 @@ const chapterFilters: { value: ChapterFilter; label: string }[] = [
 ];
 
 export function MembersTab() {
+  const { members, chapterCounts, loading, error } = useMembers();
   const [searchQuery, setSearchQuery] = useState('');
   const [chapterFilter, setChapterFilter] = useState<ChapterFilter>('all');
-
-  const chapterCounts = useMemo(() => getChapterCounts(), []);
 
   const filteredMembers = useMemo(() => {
     let result = members;
@@ -41,7 +40,7 @@ export function MembersTab() {
     }
 
     return result.sort((a, b) => a.name.localeCompare(b.name));
-  }, [searchQuery, chapterFilter]);
+  }, [members, searchQuery, chapterFilter]);
 
   const handleExport = () => {
     const csv = [
@@ -59,6 +58,23 @@ export function MembersTab() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-bloc-blue" />
+        <span className="ml-3 text-slate-600">Loading members...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

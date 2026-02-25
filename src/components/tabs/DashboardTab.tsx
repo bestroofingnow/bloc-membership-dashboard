@@ -10,8 +10,20 @@ import {
   Calendar,
 } from 'lucide-react';
 import { StatCard, ProgressBar, Card, CardTitle } from '@/components/ui';
-import { dashboardStats, chapterGoals, upcomingEvents, impactStats } from '@/data/stats';
+import { useMembers } from '@/hooks/useMembers';
+import { useGuests } from '@/hooks/useGuests';
+import { upcomingEvents, impactStats } from '@/data/stats';
 import { ChapterName } from '@/types';
+
+const TARGET_MEMBERS = 125;
+
+const chapterGoalTargets: Record<ChapterName, number> = {
+  North: 30,
+  South: 25,
+  Uptown: 30,
+  FLOC: 30,
+  Alumni: 20,
+};
 
 const chapterColors: Record<ChapterName, 'blue' | 'green' | 'amber' | 'purple'> = {
   North: 'green',
@@ -22,8 +34,13 @@ const chapterColors: Record<ChapterName, 'blue' | 'green' | 'amber' | 'purple'> 
 };
 
 export function DashboardTab() {
+  const { members, chapterCounts } = useMembers();
+  const { guests } = useGuests();
+
+  const currentMembers = members.length;
+  const guestsInPipeline = guests.length;
   const membershipProgress = Math.round(
-    (dashboardStats.currentMembers / dashboardStats.targetMembers) * 100
+    (currentMembers / TARGET_MEMBERS) * 100
   );
 
   return (
@@ -39,12 +56,12 @@ export function DashboardTab() {
         </p>
         <div className="mt-6 flex items-center gap-8">
           <div>
-            <p className="text-5xl font-bold">{dashboardStats.currentMembers}</p>
+            <p className="text-5xl font-bold">{currentMembers}</p>
             <p className="text-blue-200 text-sm">Current Members</p>
           </div>
           <div className="text-4xl font-light text-blue-300">/</div>
           <div>
-            <p className="text-5xl font-bold">{dashboardStats.targetMembers}</p>
+            <p className="text-5xl font-bold">{TARGET_MEMBERS}</p>
             <p className="text-blue-200 text-sm">2026 Goal</p>
           </div>
           <div className="flex-1 max-w-xs">
@@ -55,7 +72,7 @@ export function DashboardTab() {
               />
             </div>
             <p className="text-blue-200 text-sm mt-2">
-              {membershipProgress}% to goal ({dashboardStats.targetMembers - dashboardStats.currentMembers} needed)
+              {membershipProgress}% to goal ({TARGET_MEMBERS - currentMembers} needed)
             </p>
           </div>
         </div>
@@ -65,32 +82,31 @@ export function DashboardTab() {
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Members"
-          value={dashboardStats.currentMembers}
-          subtitle={`Target: ${dashboardStats.targetMembers}`}
+          value={currentMembers}
+          subtitle={`Target: ${TARGET_MEMBERS}`}
           icon={Users}
           color="blue"
         />
         <StatCard
           title="Guests in Pipeline"
-          value={dashboardStats.guestsInPipeline}
+          value={guestsInPipeline}
           subtitle="Active prospects"
           icon={UserPlus}
           color="purple"
         />
         <StatCard
-          title="New This Month"
-          value={dashboardStats.newMembersThisMonth}
-          subtitle="January 2026"
-          icon={TrendingUp}
-          trend={{ value: 12, isPositive: true }}
-          color="green"
-        />
-        <StatCard
           title="Seats Available"
-          value={dashboardStats.targetMembers - dashboardStats.currentMembers}
+          value={TARGET_MEMBERS - currentMembers}
           subtitle="Across all chapters"
           icon={Target}
           color="amber"
+        />
+        <StatCard
+          title="Approved This Year"
+          value={guests.filter((g) => g.status === 'Approved').length}
+          subtitle="2026"
+          icon={TrendingUp}
+          color="green"
         />
       </div>
 
@@ -100,12 +116,12 @@ export function DashboardTab() {
           Chapter Membership Goals
         </CardTitle>
         <div className="mt-6 space-y-5">
-          {(Object.entries(chapterGoals) as [ChapterName, { current: number; target: number }][]).map(
-            ([chapter, { current, target }]) => (
+          {(Object.entries(chapterGoalTargets) as [ChapterName, number][]).map(
+            ([chapter, target]) => (
               <ProgressBar
                 key={chapter}
                 label={chapter === 'FLOC' ? 'FLOC (Future Leaders)' : `BLOC ${chapter}`}
-                current={current}
+                current={chapterCounts[chapter] || 0}
                 target={target}
                 color={chapterColors[chapter]}
               />

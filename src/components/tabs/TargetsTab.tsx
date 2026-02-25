@@ -9,10 +9,11 @@ import {
   User,
   ChevronDown,
   ChevronUp,
+  Loader2,
 } from 'lucide-react';
 import { Card, Badge, Button, Modal, Input } from '@/components/ui';
-import { industryTargets, getHighPriorityTargets } from '@/data/targets';
-import { boardMembers } from '@/data/board';
+import { useTargets } from '@/hooks/useTargets';
+import { useBoardMembers } from '@/hooks/useBoardMembers';
 import { IndustryTarget } from '@/types';
 
 const priorityColors = {
@@ -28,19 +29,22 @@ const priorityIcons = {
 };
 
 export function TargetsTab() {
+  const {
+    categories,
+    totalTargets,
+    assignedTargets,
+    targetsByPriority,
+    assignTarget,
+    loading,
+    error,
+  } = useTargets();
+  const { boardMembers } = useBoardMembers();
+
   const [expandedCategories, setExpandedCategories] = useState<string[]>(
-    industryTargets.map((c) => c.name)
+    categories.map((c) => c.name)
   );
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<IndustryTarget | null>(null);
-  const [assignments, setAssignments] = useState<Record<string, string>>({});
-
-  const highPriorityCount = getHighPriorityTargets().length;
-  const totalTargets = industryTargets.reduce(
-    (acc, cat) => acc + cat.targets.length,
-    0
-  );
-  const assignedCount = Object.keys(assignments).length;
 
   const toggleCategory = (name: string) => {
     setExpandedCategories((prev) =>
@@ -55,16 +59,30 @@ export function TargetsTab() {
     setAssignModalOpen(true);
   };
 
-  const confirmAssignment = (boardMemberId: string) => {
+  const confirmAssignment = async (boardMemberName: string) => {
     if (selectedTarget) {
-      setAssignments((prev) => ({
-        ...prev,
-        [selectedTarget.id]: boardMemberId,
-      }));
+      await assignTarget(selectedTarget.id, boardMemberName);
     }
     setAssignModalOpen(false);
     setSelectedTarget(null);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-bloc-blue" />
+        <span className="ml-3 text-slate-600">Loading targets...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -89,21 +107,21 @@ export function TargetsTab() {
           <p className="text-sm text-slate-500">Target Industries</p>
         </Card>
         <Card className="text-center" padding="md">
-          <p className="text-3xl font-bold text-red-600">{highPriorityCount}</p>
+          <p className="text-3xl font-bold text-red-600">{targetsByPriority.high.length}</p>
           <p className="text-sm text-slate-500">High Priority</p>
         </Card>
         <Card className="text-center" padding="md">
-          <p className="text-3xl font-bold text-emerald-600">{assignedCount}</p>
+          <p className="text-3xl font-bold text-emerald-600">{assignedTargets}</p>
           <p className="text-sm text-slate-500">Assigned</p>
         </Card>
       </div>
 
       {/* Industry Categories */}
       <div className="space-y-4">
-        {industryTargets.map((category) => {
+        {categories.map((category) => {
           const isExpanded = expandedCategories.includes(category.name);
           const categoryAssigned = category.targets.filter(
-            (t) => assignments[t.id]
+            (t) => t.assignedTo
           ).length;
 
           return (
@@ -138,9 +156,8 @@ export function TargetsTab() {
               {isExpanded && (
                 <div className="border-t border-slate-100 divide-y divide-slate-50">
                   {category.targets.map((target) => {
-                    const assignedTo = assignments[target.id];
-                    const assignedMember = assignedTo
-                      ? boardMembers.find((m) => m.name === assignedTo)
+                    const assignedMember = target.assignedTo
+                      ? boardMembers.find((m) => m.name === target.assignedTo)
                       : null;
 
                     return (
@@ -163,10 +180,10 @@ export function TargetsTab() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                          {assignedMember ? (
+                          {assignedMember || target.assignedTo ? (
                             <div className="flex items-center gap-2 text-sm text-emerald-600">
                               <User size={14} />
-                              <span>{assignedMember.name}</span>
+                              <span>{target.assignedTo}</span>
                             </div>
                           ) : (
                             <Button

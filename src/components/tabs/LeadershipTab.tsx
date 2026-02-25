@@ -1,15 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { Mail, Phone, Building2, Search, Users } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Mail, Phone, Building2, Search, Users, Loader2 } from 'lucide-react';
 import { Card, Badge, SearchInput } from '@/components/ui';
-import {
-  boardMembers,
-  getExecutiveBoard,
-  getChapterDirectors,
-  getMembershipTeam,
-  getCommitteeLeads,
-} from '@/data/board';
+import { useBoardMembers } from '@/hooks/useBoardMembers';
 import { BoardMember } from '@/types';
 
 type FilterType = 'all' | 'executive' | 'directors' | 'membership' | 'committees';
@@ -64,24 +58,34 @@ function BoardMemberCard({ member }: { member: BoardMember }) {
 }
 
 export function LeadershipTab() {
+  const { boardMembers, loading, error } = useBoardMembers();
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const getFilteredMembers = (): BoardMember[] => {
+  const filteredMembers = useMemo(() => {
     let members: BoardMember[];
 
     switch (filter) {
       case 'executive':
-        members = getExecutiveBoard();
+        members = boardMembers.filter((m) =>
+          ['President', 'Vice President', 'Admin'].includes(m.role)
+        );
         break;
       case 'directors':
-        members = getChapterDirectors();
+        members = boardMembers.filter((m) => m.role.includes('Director'));
         break;
       case 'membership':
-        members = getMembershipTeam();
+        members = boardMembers.filter((m) => m.role.includes('Membership'));
         break;
       case 'committees':
-        members = getCommitteeLeads();
+        members = boardMembers.filter(
+          (m) =>
+            m.role.includes('Treasurer') ||
+            m.role.includes('After Hours') ||
+            m.role.includes('Sponsorship') ||
+            m.role.includes('CIC') ||
+            m.role.includes('BIG')
+        );
         break;
       default:
         members = boardMembers;
@@ -98,9 +102,24 @@ export function LeadershipTab() {
     }
 
     return members;
-  };
+  }, [boardMembers, filter, searchQuery]);
 
-  const filteredMembers = getFilteredMembers();
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-bloc-blue" />
+        <span className="ml-3 text-slate-600">Loading board members...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

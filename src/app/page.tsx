@@ -1,15 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   LayoutDashboard,
   Users,
   Search,
   Target,
   UserPlus,
+  BookOpen,
   Menu,
   X,
   ExternalLink,
+  LogOut,
+  Shield,
 } from 'lucide-react';
 import {
   DashboardTab,
@@ -17,7 +20,11 @@ import {
   MembersTab,
   TargetsTab,
   PipelineTab,
+  MembershipGuideTab,
+  AdminTab,
 } from '@/components/tabs';
+import { AuthGuard } from '@/components/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { TabId } from '@/types';
 
 interface TabConfig {
@@ -27,7 +34,7 @@ interface TabConfig {
   component: React.ReactNode;
 }
 
-const tabs: TabConfig[] = [
+const baseTabs: TabConfig[] = [
   {
     id: 'dashboard',
     label: 'Dashboard',
@@ -58,11 +65,39 @@ const tabs: TabConfig[] = [
     icon: <UserPlus size={18} />,
     component: <PipelineTab />,
   },
+  {
+    id: 'guide',
+    label: 'Membership Guide',
+    icon: <BookOpen size={18} />,
+    component: <MembershipGuideTab />,
+  },
 ];
 
-export default function HomePage() {
+function DashboardContent() {
+  const { profile, signOut, isConfigured, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const displayName = profile?.fullName || 'BLOC Member';
+  const displayRole =
+    profile?.role === 'admin'
+      ? 'Admin'
+      : profile?.role === 'chapter_director'
+        ? `${profile.chapter || ''} Director`
+        : 'Member';
+
+  const tabs = useMemo(() => {
+    const allTabs = [...baseTabs];
+    if (isAdmin) {
+      allTabs.push({
+        id: 'admin',
+        label: 'Admin',
+        icon: <Shield size={18} />,
+        component: <AdminTab />,
+      });
+    }
+    return allTabs;
+  }, [isAdmin]);
 
   const currentTab = tabs.find((t) => t.id === activeTab);
 
@@ -84,7 +119,7 @@ export default function HomePage() {
                   BLOC 2026 Dashboard
                 </h1>
                 <p className="text-blue-200 text-xs sm:text-sm hidden sm:block">
-                  Drive to 125 Members | Current: 89
+                  Drive to 125 Members
                 </p>
               </div>
             </div>
@@ -101,9 +136,18 @@ export default function HomePage() {
                 <ExternalLink size={14} />
               </a>
               <div className="hidden sm:block text-right">
-                <p className="font-semibold text-sm">James Turner</p>
-                <p className="text-xs text-blue-200">Sr. Membership Director</p>
+                <p className="font-semibold text-sm">{displayName}</p>
+                <p className="text-xs text-blue-200">{displayRole}</p>
               </div>
+              {isConfigured && (
+                <button
+                  onClick={signOut}
+                  className="hidden sm:flex items-center gap-1.5 text-sm text-blue-200 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+                  title="Sign Out"
+                >
+                  <LogOut size={16} />
+                </button>
+              )}
 
               {/* Mobile Menu Button */}
               <button
@@ -160,6 +204,18 @@ export default function HomePage() {
                 </button>
               ))}
               <div className="pt-3 pb-2 border-t border-white/10 mt-3">
+                {isConfigured && (
+                  <div className="flex items-center justify-between px-4 py-2 mb-2">
+                    <span className="text-sm text-blue-200">{displayName}</span>
+                    <button
+                      onClick={signOut}
+                      className="flex items-center gap-1.5 text-sm text-blue-200 hover:text-white"
+                    >
+                      <LogOut size={14} />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
                 <a
                   href="https://businessleadersofcharlotte.com"
                   target="_blank"
@@ -213,5 +269,13 @@ export default function HomePage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <AuthGuard>
+      <DashboardContent />
+    </AuthGuard>
   );
 }

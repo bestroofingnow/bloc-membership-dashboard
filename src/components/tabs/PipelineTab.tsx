@@ -13,11 +13,18 @@ import {
   User,
   Building2,
   MoreVertical,
+  Loader2,
+  Globe,
+  ArrowRight,
+  XCircle,
 } from 'lucide-react';
 import { Card, Badge, Button, Modal, Input } from '@/components/ui';
-import { initialGuests, pipelineStages, getNextStepText } from '@/data/guests';
+import { pipelineStages } from '@/data/guests';
 import { boardMembers } from '@/data/board';
 import { Guest, GuestStatus } from '@/types';
+import { useGuests } from '@/hooks/useGuests';
+import { useSignups, PublicSignup } from '@/hooks/useSignups';
+import { useAuth } from '@/contexts/AuthContext';
 
 const stageIcons: Record<string, React.ReactNode> = {
   'New Lead': <UserPlus size={16} />,
@@ -29,6 +36,78 @@ const stageIcons: Record<string, React.ReactNode> = {
   'Application Received': <FileText size={16} />,
   Approved: <CheckCircle size={16} />,
 };
+
+function SignupCard({
+  signup,
+  onPromote,
+  onDismiss,
+  disabled,
+}: {
+  signup: PublicSignup;
+  onPromote: () => void;
+  onDismiss: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="bg-white p-4 rounded-xl border border-amber-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h4 className="font-bold text-slate-900 truncate">{signup.name}</h4>
+            <Badge variant="warning" size="sm">New</Badge>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-slate-500 mt-0.5">
+            <Building2 size={12} />
+            <span className="truncate">{signup.company}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-slate-400">
+            {signup.industry && (
+              <span className="bg-slate-100 px-2 py-0.5 rounded">{signup.industry}</span>
+            )}
+            {signup.email && (
+              <span className="flex items-center gap-1">
+                <Mail size={10} />
+                {signup.email}
+              </span>
+            )}
+            {signup.phone && (
+              <span className="flex items-center gap-1">
+                <Phone size={10} />
+                {signup.phone}
+              </span>
+            )}
+            {signup.referralSource && (
+              <span>via {signup.referralSource}</span>
+            )}
+          </div>
+          {signup.notes && (
+            <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{signup.notes}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={onPromote}
+            disabled={disabled}
+          >
+            <ArrowRight size={14} className="mr-1" />
+            Add to Pipeline
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={onDismiss}
+            disabled={disabled}
+          >
+            <XCircle size={14} className="mr-1" />
+            Dismiss
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function GuestCard({
   guest,
@@ -84,10 +163,15 @@ function GuestCard({
 }
 
 export function PipelineTab() {
-  const [guests, setGuests] = useState<Guest[]>(initialGuests);
+  const { guests, loading, error, addGuest, advanceGuest, deleteGuest } = useGuests();
+  const { signups, loading: signupsLoading, promoteToGuest, dismissSignup } = useSignups();
+  const { canEdit } = useAuth();
+
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [processingSignupId, setProcessingSignupId] = useState<string | null>(null);
 
   // New guest form state
   const [newGuest, setNewGuest] = useState({
@@ -104,52 +188,38 @@ export function PipelineTab() {
     guests: guests.filter((g) => g.status === stage.status),
   }));
 
-  const handleAdvance = (guest: Guest) => {
-    const currentIndex = pipelineStages.findIndex(
-      (s) => s.status === guest.status
-    );
-    if (currentIndex < pipelineStages.length - 1) {
-      const nextStatus = pipelineStages[currentIndex + 1].status;
-      setGuests((prev) =>
-        prev.map((g) =>
-          g.id === guest.id
-            ? {
-                ...g,
-                status: nextStatus,
-                nextStep: getNextStepText(nextStatus),
-                updatedAt: new Date().toISOString(),
-              }
-            : g
-        )
-      );
-    }
+  const handleAdvance = async (guest: Guest) => {
+    if (!canEdit) return;
+    setIsSubmitting(true);
+    await advanceGuest(guest.id);
+    setIsSubmitting(false);
   };
 
-  const handleAddGuest = () => {
-    const guest: Guest = {
-      id: Math.random().toString(36).substring(2, 11),
+  const handleAddGuest = async () => {
+    if (!canEdit) return;
+    setIsSubmitting(true);
+
+    const result = await addGuest({
       name: newGuest.name,
       company: newGuest.company,
       industry: newGuest.industry,
       invitedBy: newGuest.invitedBy,
       email: newGuest.email,
       phone: newGuest.phone,
-      status: 'New Lead',
-      nextStep: 'Invite to After Hours',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    setGuests((prev) => [...prev, guest]);
-    setNewGuest({
-      name: '',
-      company: '',
-      industry: '',
-      invitedBy: '',
-      email: '',
-      phone: '',
     });
-    setAddModalOpen(false);
+
+    if (result) {
+      setNewGuest({
+        name: '',
+        company: '',
+        industry: '',
+        invitedBy: '',
+        email: '',
+        phone: '',
+      });
+      setAddModalOpen(false);
+    }
+    setIsSubmitting(false);
   };
 
   const handleEditGuest = (guest: Guest) => {
@@ -157,13 +227,46 @@ export function PipelineTab() {
     setEditModalOpen(true);
   };
 
-  const handleDeleteGuest = () => {
-    if (selectedGuest) {
-      setGuests((prev) => prev.filter((g) => g.id !== selectedGuest.id));
+  const handleDeleteGuest = async () => {
+    if (!canEdit || !selectedGuest) return;
+    setIsSubmitting(true);
+
+    const result = await deleteGuest(selectedGuest.id);
+    if (result) {
       setEditModalOpen(false);
       setSelectedGuest(null);
     }
+    setIsSubmitting(false);
   };
+
+  const handlePromoteSignup = async (signupId: string) => {
+    setProcessingSignupId(signupId);
+    await promoteToGuest(signupId);
+    setProcessingSignupId(null);
+  };
+
+  const handleDismissSignup = async (signupId: string) => {
+    setProcessingSignupId(signupId);
+    await dismissSignup(signupId);
+    setProcessingSignupId(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-bloc-blue" />
+        <span className="ml-3 text-slate-600">Loading pipeline...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
 
   // Show condensed view for mobile - first 3 stages
   const displayStages = guestsByStage.slice(0, 6);
@@ -180,11 +283,39 @@ export function PipelineTab() {
             Track prospects from first contact to membership approval
           </p>
         </div>
-        <Button onClick={() => setAddModalOpen(true)}>
-          <UserPlus size={16} className="mr-2" />
-          Add Guest
-        </Button>
+{canEdit && (
+          <Button onClick={() => setAddModalOpen(true)}>
+            <UserPlus size={16} className="mr-2" />
+            Add Guest
+          </Button>
+        )}
       </div>
+
+      {/* New Sign-ups Banner */}
+      {canEdit && signups.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Globe size={20} className="text-amber-600" />
+            <h3 className="font-bold text-amber-900">
+              New Sign-ups ({signups.length})
+            </h3>
+            <span className="text-sm text-amber-700">
+              from the public join form
+            </span>
+          </div>
+          <div className="space-y-3">
+            {signups.map((signup) => (
+              <SignupCard
+                key={signup.id}
+                signup={signup}
+                onPromote={() => handlePromoteSignup(signup.id)}
+                onDismiss={() => handleDismissSignup(signup.id)}
+                disabled={processingSignupId === signup.id}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Pipeline Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -327,9 +458,16 @@ export function PipelineTab() {
             <Button
               className="flex-1"
               onClick={handleAddGuest}
-              disabled={!newGuest.name || !newGuest.company || !newGuest.invitedBy}
+              disabled={!newGuest.name || !newGuest.company || !newGuest.invitedBy || isSubmitting}
             >
-              Add Guest
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={14} className="mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                'Add Guest'
+              )}
             </Button>
           </div>
         </div>
@@ -379,13 +517,23 @@ export function PipelineTab() {
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button
-                variant="danger"
-                className="flex-1"
-                onClick={handleDeleteGuest}
-              >
-                Remove Guest
-              </Button>
+              {canEdit && (
+                <Button
+                  variant="danger"
+                  className="flex-1"
+                  onClick={handleDeleteGuest}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={14} className="mr-2 animate-spin" />
+                      Removing...
+                    </>
+                  ) : (
+                    'Remove Guest'
+                  )}
+                </Button>
+              )}
               <Button
                 variant="secondary"
                 className="flex-1"

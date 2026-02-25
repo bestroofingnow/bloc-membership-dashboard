@@ -103,7 +103,7 @@ export interface DashboardStats {
 }
 
 // Tab configuration
-export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline';
+export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'admin';
 
 export interface Tab {
   id: TabId;
