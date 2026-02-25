@@ -10,10 +10,14 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Plus,
+  Trash2,
+  FolderPlus,
 } from 'lucide-react';
 import { Card, Badge, Button, Modal, Input } from '@/components/ui';
 import { useTargets } from '@/hooks/useTargets';
 import { useBoardMembers } from '@/hooks/useBoardMembers';
+import { useAuth } from '@/contexts/AuthContext';
 import { IndustryTarget } from '@/types';
 
 const priorityColors = {
@@ -35,16 +39,27 @@ export function TargetsTab() {
     assignedTargets,
     targetsByPriority,
     assignTarget,
+    addTarget,
+    deleteTarget,
+    addCategory,
+    deleteCategory,
     loading,
     error,
   } = useTargets();
   const { boardMembers } = useBoardMembers();
+  const { canEdit } = useAuth();
 
   const [expandedCategories, setExpandedCategories] = useState<string[]>(
     categories.map((c) => c.name)
   );
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<IndustryTarget | null>(null);
+  const [addTargetModal, setAddTargetModal] = useState<string | null>(null);
+  const [addCategoryModal, setAddCategoryModal] = useState(false);
+  const [newTargetTitle, setNewTargetTitle] = useState('');
+  const [newTargetPriority, setNewTargetPriority] = useState<'high' | 'medium' | 'low'>('medium');
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleCategory = (name: string) => {
     setExpandedCategories((prev) =>
@@ -65,6 +80,33 @@ export function TargetsTab() {
     }
     setAssignModalOpen(false);
     setSelectedTarget(null);
+  };
+
+  const handleAddTarget = async () => {
+    if (!addTargetModal || !newTargetTitle.trim()) return;
+    setIsSubmitting(true);
+    await addTarget(addTargetModal, newTargetTitle.trim(), newTargetPriority);
+    setNewTargetTitle('');
+    setNewTargetPriority('medium');
+    setAddTargetModal(null);
+    setIsSubmitting(false);
+  };
+
+  const handleDeleteTarget = async (targetId: string) => {
+    await deleteTarget(targetId);
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    setIsSubmitting(true);
+    await addCategory(newCategoryName.trim());
+    setNewCategoryName('');
+    setAddCategoryModal(false);
+    setIsSubmitting(false);
+  };
+
+  const handleDeleteCategory = async (categoryName: string) => {
+    await deleteCategory(categoryName);
   };
 
   if (loading) {
@@ -116,6 +158,16 @@ export function TargetsTab() {
         </Card>
       </div>
 
+      {/* Add Category Button */}
+      {canEdit && (
+        <div className="flex justify-end">
+          <Button variant="secondary" onClick={() => setAddCategoryModal(true)}>
+            <FolderPlus size={16} className="mr-2" />
+            Add Category
+          </Button>
+        </div>
+      )}
+
       {/* Industry Categories */}
       <div className="space-y-4">
         {categories.map((category) => {
@@ -127,11 +179,11 @@ export function TargetsTab() {
           return (
             <Card key={category.name} padding="none" className="overflow-hidden">
               {/* Category Header */}
-              <button
-                onClick={() => toggleCategory(category.name)}
-                className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between p-5 hover:bg-slate-50 transition-colors">
+                <button
+                  onClick={() => toggleCategory(category.name)}
+                  className="flex items-center gap-3 flex-1"
+                >
                   <div className="p-2 bg-bloc-blue/10 rounded-lg">
                     <Briefcase className="text-bloc-blue" size={20} />
                   </div>
@@ -144,13 +196,40 @@ export function TargetsTab() {
                       {categoryAssigned} assigned
                     </p>
                   </div>
+                </button>
+                <div className="flex items-center gap-2">
+                  {canEdit && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setAddTargetModal(category.name)}
+                        title="Add target to this category"
+                      >
+                        <Plus size={16} />
+                      </Button>
+                      {category.targets.length === 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteCategory(category.name)}
+                          title="Delete empty category"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  <button onClick={() => toggleCategory(category.name)}>
+                    {isExpanded ? (
+                      <ChevronUp className="text-slate-400" size={20} />
+                    ) : (
+                      <ChevronDown className="text-slate-400" size={20} />
+                    )}
+                  </button>
                 </div>
-                {isExpanded ? (
-                  <ChevronUp className="text-slate-400" size={20} />
-                ) : (
-                  <ChevronDown className="text-slate-400" size={20} />
-                )}
-              </button>
+              </div>
 
               {/* Targets List */}
               {isExpanded && (
@@ -194,6 +273,15 @@ export function TargetsTab() {
                               + Assign
                             </Button>
                           )}
+                          {canEdit && (
+                            <button
+                              onClick={() => handleDeleteTarget(target.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Remove target"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -236,6 +324,92 @@ export function TargetsTab() {
                 </div>
               </button>
             ))}
+        </div>
+      </Modal>
+
+      {/* Add Target Modal */}
+      <Modal
+        isOpen={!!addTargetModal}
+        onClose={() => setAddTargetModal(null)}
+        title={`Add Target to ${addTargetModal || ''}`}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Industry / Role Title"
+            value={newTargetTitle}
+            onChange={(e) => setNewTargetTitle(e.target.value)}
+            placeholder="e.g., Electrician"
+          />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Priority
+            </label>
+            <select
+              value={newTargetPriority}
+              onChange={(e) => setNewTargetPriority(e.target.value as 'high' | 'medium' | 'low')}
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
+            >
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" className="flex-1" onClick={() => setAddTargetModal(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={handleAddTarget}
+              disabled={!newTargetTitle.trim() || isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={14} className="mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                'Add Target'
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Category Modal */}
+      <Modal
+        isOpen={addCategoryModal}
+        onClose={() => setAddCategoryModal(false)}
+        title="Add New Category"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Category Name"
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            placeholder="e.g., Automotive & Transport"
+          />
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" className="flex-1" onClick={() => setAddCategoryModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={handleAddCategory}
+              disabled={!newCategoryName.trim() || isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={14} className="mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                'Add Category'
+              )}
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

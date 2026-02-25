@@ -5,3 +5,4 @@ export { TargetsTab } from './TargetsTab';
 export { PipelineTab } from './PipelineTab';
 export { MembershipGuideTab } from './MembershipGuideTab';
 export { AdminTab } from './AdminTab';
+export { ScannerTab } from './ScannerTab';

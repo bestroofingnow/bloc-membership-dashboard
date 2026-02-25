@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { IndustryCategory, IndustryTarget, ChapterName } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { IndustryCategory, IndustryTarget } from '@/types';
 import { industryTargets as staticTargets } from '@/data/targets';
 
 interface DbIndustryCategory {
@@ -35,8 +36,10 @@ function transformDbToTarget(row: DbIndustryTarget): IndustryTarget {
 
 export function useTargets() {
   const [categories, setCategories] = useState<IndustryCategory[]>(staticTargets);
+  const [categoryIds, setCategoryIds] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { canEdit, session } = useAuth();
   const isConfigured = isSupabaseConfigured();
 
   const fetchTargets = useCallback(async () => {
@@ -45,6 +48,12 @@ export function useTargets() {
       return;
     }
 
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     try {
       // Fetch categories and targets in parallel
       const [categoriesResult, targetsResult] = await Promise.all([
@@ -71,7 +80,9 @@ export function useTargets() {
       }
 
       if (categoriesResult.data && categoriesResult.data.length > 0) {
+        const idMap: Record<string, string> = {};
         const transformedCategories = categoriesResult.data.map((cat) => {
+          idMap[cat.name] = cat.id;
           const categoryTargets = (targetsResult.data || [])
             .filter((t) => t.category_id === cat.id)
             .map(transformDbToTarget);
@@ -82,7 +93,10 @@ export function useTargets() {
           };
         });
 
+        setCategoryIds(idMap);
         setCategories(transformedCategories);
+      } else {
+        setCategories([]);
       }
     } catch (err) {
       console.error('Fetch targets error:', err);
@@ -90,12 +104,12 @@ export function useTargets() {
     } finally {
       setLoading(false);
     }
-  }, [isConfigured]);
+  }, [isConfigured, session]);
 
   useEffect(() => {
     fetchTargets();
 
-    if (!isConfigured) return;
+    if (!isConfigured || !session) return;
 
     // Set up realtime subscription for targets
     const channel = supabase
@@ -113,7 +127,7 @@ export function useTargets() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchTargets, isConfigured]);
+  }, [fetchTargets, isConfigured, session]);
 
   // Assign a target to a user
   const assignTarget = useCallback(
@@ -208,15 +222,140 @@ export function useTargets() {
     };
   }, [categories]);
 
+  const addTarget = useCallback(
+    async (
+      categoryName: string,
+      title: string,
+      priority: 'high' | 'medium' | 'low'
+    ): Promise<{ error: string | null }> => {
+      if (!isConfigured) {
+        setCategories((prev) =>
+          prev.map((cat) =>
+            cat.name === categoryName
+              ? { ...cat, targets: [...cat.targets, { id: crypto.randomUUID(), title, priority }] }
+              : cat
+          )
+        );
+        return { error: null };
+      }
+
+      if (!canEdit) return { error: 'Permission denied' };
+
+      const categoryId = categoryIds[categoryName];
+      if (!categoryId) return { error: 'Category not found' };
+
+      try {
+        const { error: insertError } = await supabase
+          .from('industry_targets')
+          .insert([{ category_id: categoryId, title, priority }]);
+
+        if (insertError) return { error: insertError.message };
+        return { error: null };
+      } catch {
+        return { error: 'Failed to add target' };
+      }
+    },
+    [isConfigured, canEdit, categoryIds]
+  );
+
+  const deleteTarget = useCallback(
+    async (targetId: string): Promise<{ error: string | null }> => {
+      if (!isConfigured) {
+        setCategories((prev) =>
+          prev.map((cat) => ({
+            ...cat,
+            targets: cat.targets.filter((t) => t.id !== targetId),
+          }))
+        );
+        return { error: null };
+      }
+
+      if (!canEdit) return { error: 'Permission denied' };
+
+      try {
+        const { error: deleteError } = await supabase
+          .from('industry_targets')
+          .delete()
+          .eq('id', targetId);
+
+        if (deleteError) return { error: deleteError.message };
+        return { error: null };
+      } catch {
+        return { error: 'Failed to delete target' };
+      }
+    },
+    [isConfigured, canEdit]
+  );
+
+  const addCategory = useCallback(
+    async (name: string): Promise<{ error: string | null }> => {
+      if (!isConfigured) {
+        setCategories((prev) => [...prev, { name, targets: [] }]);
+        return { error: null };
+      }
+
+      if (!canEdit) return { error: 'Permission denied' };
+
+      try {
+        const maxOrder = Math.max(0, ...Object.values(categoryIds).map(() => 0));
+        const { error: insertError } = await supabase
+          .from('industry_categories')
+          .insert([{ name, display_order: maxOrder + 1 }]);
+
+        if (insertError) return { error: insertError.message };
+        await fetchTargets();
+        return { error: null };
+      } catch {
+        return { error: 'Failed to add category' };
+      }
+    },
+    [isConfigured, canEdit, categoryIds, fetchTargets]
+  );
+
+  const deleteCategory = useCallback(
+    async (categoryName: string): Promise<{ error: string | null }> => {
+      if (!isConfigured) {
+        setCategories((prev) => prev.filter((c) => c.name !== categoryName));
+        return { error: null };
+      }
+
+      if (!canEdit) return { error: 'Permission denied' };
+
+      const categoryId = categoryIds[categoryName];
+      if (!categoryId) return { error: 'Category not found' };
+
+      try {
+        const { error: deleteError } = await supabase
+          .from('industry_categories')
+          .delete()
+          .eq('id', categoryId);
+
+        if (deleteError) return { error: deleteError.message };
+        await fetchTargets();
+        return { error: null };
+      } catch {
+        return { error: 'Failed to delete category' };
+      }
+    },
+    [isConfigured, canEdit, categoryIds, fetchTargets]
+  );
+
+  const clearError = () => setError(null);
+
   return {
     categories,
     loading,
     error,
     assignTarget,
     updateTargetNotes,
+    addTarget,
+    deleteTarget,
+    addCategory,
+    deleteCategory,
     totalTargets,
     assignedTargets,
     targetsByPriority,
+    clearError,
     refetch: fetchTargets,
   };
 }

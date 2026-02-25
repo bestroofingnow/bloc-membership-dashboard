@@ -43,7 +43,7 @@ export function useGuests() {
   const [guests, setGuests] = useState<Guest[]>(initialGuests);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { canEdit } = useAuth();
+  const { canEdit, session } = useAuth();
   const isConfigured = isSupabaseConfigured();
 
   const fetchGuests = useCallback(async () => {
@@ -52,6 +52,12 @@ export function useGuests() {
       return;
     }
 
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     try {
       const { data, error: fetchError } = await supabase
         .from('guests')
@@ -61,22 +67,21 @@ export function useGuests() {
       if (fetchError) {
         setError(fetchError.message);
         console.error('Error fetching guests:', fetchError);
-      } else if (data && data.length > 0) {
-        setGuests(data.map(transformDbToGuest));
+      } else if (data) {
+        setGuests(data.length > 0 ? data.map(transformDbToGuest) : []);
       }
-      // If no data in DB yet, keep using initialGuests
     } catch (err) {
       console.error('Fetch guests error:', err);
       setError('Failed to load guests');
     } finally {
       setLoading(false);
     }
-  }, [isConfigured]);
+  }, [isConfigured, session]);
 
   useEffect(() => {
     fetchGuests();
 
-    if (!isConfigured) return;
+    if (!isConfigured || !session) return;
 
     // Set up realtime subscription
     const channel = supabase
@@ -103,7 +108,7 @@ export function useGuests() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchGuests, isConfigured]);
+  }, [fetchGuests, isConfigured, session]);
 
   const addGuest = async (
     guestData: Omit<Guest, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'nextStep'>

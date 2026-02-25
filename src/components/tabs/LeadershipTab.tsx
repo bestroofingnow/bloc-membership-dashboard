@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Mail, Phone, Building2, Search, Users, Loader2 } from 'lucide-react';
-import { Card, Badge, SearchInput } from '@/components/ui';
-import { useBoardMembers } from '@/hooks/useBoardMembers';
+import { Mail, Phone, Building2, Users, Loader2, UserPlus, Trash2 } from 'lucide-react';
+import { Card, Badge, SearchInput, Button, Modal, Input } from '@/components/ui';
+import { useBoardMembers, BoardMemberWithId } from '@/hooks/useBoardMembers';
+import { useAuth } from '@/contexts/AuthContext';
 import { BoardMember } from '@/types';
 
 type FilterType = 'all' | 'executive' | 'directors' | 'membership' | 'committees';
@@ -23,13 +24,32 @@ function getRoleBadgeColor(role: string): 'success' | 'info' | 'warning' | 'defa
   return 'default';
 }
 
-function BoardMemberCard({ member }: { member: BoardMember }) {
+function BoardMemberCard({
+  member,
+  canEdit,
+  onDelete,
+}: {
+  member: BoardMemberWithId;
+  canEdit: boolean;
+  onDelete: (id: string) => void;
+}) {
   return (
     <Card className="flex flex-col h-full" padding="md">
       <div className="flex-1">
-        <Badge variant={getRoleBadgeColor(member.role)} size="sm">
-          {member.role}
-        </Badge>
+        <div className="flex items-start justify-between">
+          <Badge variant={getRoleBadgeColor(member.role)} size="sm">
+            {member.role}
+          </Badge>
+          {canEdit && member.id && (
+            <button
+              onClick={() => onDelete(member.id!)}
+              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Remove board member"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
         <h3 className="text-lg font-bold mt-3 text-slate-900">{member.name}</h3>
         <div className="flex items-center gap-1.5 text-slate-500 text-sm mt-1">
           <Building2 size={14} />
@@ -58,12 +78,23 @@ function BoardMemberCard({ member }: { member: BoardMember }) {
 }
 
 export function LeadershipTab() {
-  const { boardMembers, loading, error } = useBoardMembers();
+  const { boardMembers, loading, error, addBoardMember, deleteBoardMember } = useBoardMembers();
+  const { canEdit } = useAuth();
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newMember, setNewMember] = useState({
+    role: '',
+    name: '',
+    company: '',
+    email: '',
+    phone: '',
+  });
 
   const filteredMembers = useMemo(() => {
-    let members: BoardMember[];
+    let members: BoardMemberWithId[];
 
     switch (filter) {
       case 'executive':
@@ -104,6 +135,27 @@ export function LeadershipTab() {
     return members;
   }, [boardMembers, filter, searchQuery]);
 
+  const handleAddMember = async () => {
+    if (!newMember.name || !newMember.role || !newMember.company || !newMember.email || !newMember.phone) return;
+    setIsSubmitting(true);
+
+    const result = await addBoardMember(newMember as BoardMember);
+    if (result) {
+      setNewMember({ role: '', name: '', company: '', email: '', phone: '' });
+      setAddModalOpen(false);
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleDeleteMember = async (id: string) => {
+    setIsSubmitting(true);
+    const result = await deleteBoardMember(id);
+    if (result) {
+      setDeleteConfirmId(null);
+    }
+    setIsSubmitting(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -138,7 +190,7 @@ export function LeadershipTab() {
       </div>
 
       {/* Filters & Search */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex gap-2 flex-wrap">
           {filters.map((f) => (
             <button
@@ -154,12 +206,20 @@ export function LeadershipTab() {
             </button>
           ))}
         </div>
-        <div className="flex-1 max-w-xs">
-          <SearchInput
-            placeholder="Search board members..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div className="flex items-center gap-2">
+          <div className="max-w-xs">
+            <SearchInput
+              placeholder="Search board members..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          {canEdit && (
+            <Button onClick={() => setAddModalOpen(true)}>
+              <UserPlus size={16} className="mr-2" />
+              Add
+            </Button>
+          )}
         </div>
       </div>
 
@@ -171,7 +231,12 @@ export function LeadershipTab() {
       {/* Board Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredMembers.map((member, index) => (
-          <BoardMemberCard key={index} member={member} />
+          <BoardMemberCard
+            key={member.id || index}
+            member={member}
+            canEdit={canEdit}
+            onDelete={(id) => setDeleteConfirmId(id)}
+          />
         ))}
       </div>
 
@@ -181,6 +246,106 @@ export function LeadershipTab() {
           <p>No board members match your search.</p>
         </div>
       )}
+
+      {/* Add Board Member Modal */}
+      <Modal
+        isOpen={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        title="Add Board Member"
+        size="md"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Role *"
+            value={newMember.role}
+            onChange={(e) => setNewMember((prev) => ({ ...prev, role: e.target.value }))}
+            placeholder="e.g., North Director (Sr)"
+          />
+          <Input
+            label="Full Name *"
+            value={newMember.name}
+            onChange={(e) => setNewMember((prev) => ({ ...prev, name: e.target.value }))}
+            placeholder="e.g., John Smith"
+          />
+          <Input
+            label="Company *"
+            value={newMember.company}
+            onChange={(e) => setNewMember((prev) => ({ ...prev, company: e.target.value }))}
+            placeholder="e.g., Smith Consulting"
+          />
+          <Input
+            label="Email *"
+            type="email"
+            value={newMember.email}
+            onChange={(e) => setNewMember((prev) => ({ ...prev, email: e.target.value }))}
+            placeholder="john@company.com"
+          />
+          <Input
+            label="Phone *"
+            type="tel"
+            value={newMember.phone}
+            onChange={(e) => setNewMember((prev) => ({ ...prev, phone: e.target.value }))}
+            placeholder="704-555-0000"
+          />
+
+          <div className="flex gap-3 pt-4">
+            <Button variant="secondary" className="flex-1" onClick={() => setAddModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={handleAddMember}
+              disabled={
+                !newMember.name || !newMember.role || !newMember.company ||
+                !newMember.email || !newMember.phone || isSubmitting
+              }
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={14} className="mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                'Add Board Member'
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        title="Remove Board Member"
+        size="sm"
+      >
+        <p className="text-slate-600 mb-4">
+          Are you sure you want to remove{' '}
+          <strong>{boardMembers.find((m) => m.id === deleteConfirmId)?.name}</strong>{' '}
+          from the board? This action cannot be undone.
+        </p>
+        <div className="flex gap-3">
+          <Button variant="secondary" className="flex-1" onClick={() => setDeleteConfirmId(null)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            className="flex-1"
+            onClick={() => deleteConfirmId && handleDeleteMember(deleteConfirmId)}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 size={14} className="mr-2 animate-spin" />
+                Removing...
+              </>
+            ) : (
+              'Remove'
+            )}
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

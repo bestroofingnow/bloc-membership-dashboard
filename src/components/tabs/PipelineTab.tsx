@@ -20,9 +20,9 @@ import {
 } from 'lucide-react';
 import { Card, Badge, Button, Modal, Input } from '@/components/ui';
 import { pipelineStages } from '@/data/guests';
-import { boardMembers } from '@/data/board';
 import { Guest, GuestStatus } from '@/types';
 import { useGuests } from '@/hooks/useGuests';
+import { useBoardMembers } from '@/hooks/useBoardMembers';
 import { useSignups, PublicSignup } from '@/hooks/useSignups';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -164,6 +164,7 @@ function GuestCard({
 
 export function PipelineTab() {
   const { guests, loading, error, addGuest, advanceGuest, deleteGuest } = useGuests();
+  const { boardMembers } = useBoardMembers();
   const { signups, loading: signupsLoading, promoteToGuest, dismissSignup } = useSignups();
   const { canEdit } = useAuth();
 

@@ -144,9 +144,9 @@ export function MembershipGuideTab() {
           </p>
         </Card>
         <Card className="text-center" padding="md">
-          <div className="text-3xl font-bold text-amber-600 mb-1">$240</div>
+          <div className="text-3xl font-bold text-amber-600 mb-1">$300</div>
           <p className="text-xs text-slate-500">
-            Full Member / $120 Associate
+            Full Member / $150 Associate
           </p>
         </Card>
         <Card className="text-center" padding="md">
@@ -540,7 +540,7 @@ export function MembershipGuideTab() {
               <div className="flex items-start gap-2">
                 <Badge variant="error" size="sm">Admin</Badge>
                 <span>
-                  Send invoice for dues — $240 Full Member, $120 Associate
+                  Send invoice for dues — $300 Full Member, $150 Associate
                 </span>
               </div>
               <div className="flex items-start gap-2">

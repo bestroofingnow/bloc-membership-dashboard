@@ -13,6 +13,7 @@ import {
   ExternalLink,
   LogOut,
   Shield,
+  CreditCard,
 } from 'lucide-react';
 import {
   DashboardTab,
@@ -22,6 +23,7 @@ import {
   PipelineTab,
   MembershipGuideTab,
   AdminTab,
+  ScannerTab,
 } from '@/components/tabs';
 import { AuthGuard } from '@/components/auth';
 import { useAuth } from '@/contexts/AuthContext';
@@ -64,6 +66,12 @@ const baseTabs: TabConfig[] = [
     label: 'Guest Pipeline',
     icon: <UserPlus size={18} />,
     component: <PipelineTab />,
+  },
+  {
+    id: 'scanner',
+    label: 'Card Scanner',
+    icon: <CreditCard size={18} />,
+    component: <ScannerTab />,
   },
   {
     id: 'guide',
