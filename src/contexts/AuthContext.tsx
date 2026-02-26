@@ -79,6 +79,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Safety timeout — never stay stuck loading for more than 8 seconds
+    const timeout = setTimeout(() => {
+      setLoading(false);
+    }, 8000);
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
@@ -88,6 +93,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setLoading(false);
       }
+    }).catch((err) => {
+      console.error('Failed to get session:', err);
+      setLoading(false);
     });
 
     // Listen for auth changes
@@ -96,16 +104,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
-        if (event === 'SIGNED_IN' && currentSession?.user) {
+        if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && currentSession?.user) {
           await fetchProfile(currentSession.user.id);
         } else if (event === 'SIGNED_OUT') {
           setProfile(null);
+          setLoading(false);
+        } else if (!currentSession) {
           setLoading(false);
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, [isConfigured, fetchProfile]);
 
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
