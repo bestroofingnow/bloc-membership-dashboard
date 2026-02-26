@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Mail, Phone, Building2, Users, Loader2, UserPlus, Trash2 } from 'lucide-react';
+import { Mail, Phone, Building2, Users, Loader2, UserPlus, Trash2, Pencil, Save } from 'lucide-react';
 import { Card, Badge, SearchInput, Button, Modal, Input } from '@/components/ui';
 import { useBoardMembers, BoardMemberWithId } from '@/hooks/useBoardMembers';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,10 +28,12 @@ function BoardMemberCard({
   member,
   canEdit,
   onDelete,
+  onEdit,
 }: {
   member: BoardMemberWithId;
   canEdit: boolean;
   onDelete: (id: string) => void;
+  onEdit: (member: BoardMemberWithId) => void;
 }) {
   return (
     <Card className="flex flex-col h-full" padding="md">
@@ -41,13 +43,22 @@ function BoardMemberCard({
             {member.role}
           </Badge>
           {canEdit && member.id && (
-            <button
-              onClick={() => onDelete(member.id!)}
-              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              title="Remove board member"
-            >
-              <Trash2 size={14} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onEdit(member)}
+                className="p-1.5 text-slate-400 hover:text-bloc-blue hover:bg-blue-50 rounded-lg transition-colors"
+                title="Edit board member"
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                onClick={() => onDelete(member.id!)}
+                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Remove board member"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
           )}
         </div>
         <h3 className="text-lg font-bold mt-3 text-slate-900">{member.name}</h3>
@@ -78,7 +89,7 @@ function BoardMemberCard({
 }
 
 export function LeadershipTab() {
-  const { boardMembers, loading, error, addBoardMember, deleteBoardMember } = useBoardMembers();
+  const { boardMembers, loading, error, addBoardMember, updateBoardMember, deleteBoardMember } = useBoardMembers();
   const { canEdit } = useAuth();
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -92,6 +103,34 @@ export function LeadershipTab() {
     email: '',
     phone: '',
   });
+
+  // Edit state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editMember, setEditMember] = useState<BoardMemberWithId | null>(null);
+  const [editData, setEditData] = useState({ role: '', name: '', company: '', email: '', phone: '' });
+
+  const openEditModal = (member: BoardMemberWithId) => {
+    setEditMember(member);
+    setEditData({
+      role: member.role,
+      name: member.name,
+      company: member.company,
+      email: member.email,
+      phone: member.phone,
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleEditMember = async () => {
+    if (!editMember?.id || !editData.name || !editData.role) return;
+    setIsSubmitting(true);
+    const result = await updateBoardMember(editMember.id, editData as BoardMember);
+    if (result) {
+      setEditModalOpen(false);
+      setEditMember(null);
+    }
+    setIsSubmitting(false);
+  };
 
   const filteredMembers = useMemo(() => {
     let members: BoardMemberWithId[];
@@ -236,6 +275,7 @@ export function LeadershipTab() {
             member={member}
             canEdit={canEdit}
             onDelete={(id) => setDeleteConfirmId(id)}
+            onEdit={openEditModal}
           />
         ))}
       </div>
@@ -344,6 +384,65 @@ export function LeadershipTab() {
               'Remove'
             )}
           </Button>
+        </div>
+      </Modal>
+
+      {/* Edit Board Member Modal */}
+      <Modal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        title="Edit Board Member"
+        size="md"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Role *"
+            value={editData.role}
+            onChange={(e) => setEditData((prev) => ({ ...prev, role: e.target.value }))}
+            placeholder="e.g., North Director (Sr)"
+          />
+          <Input
+            label="Full Name *"
+            value={editData.name}
+            onChange={(e) => setEditData((prev) => ({ ...prev, name: e.target.value }))}
+          />
+          <Input
+            label="Company *"
+            value={editData.company}
+            onChange={(e) => setEditData((prev) => ({ ...prev, company: e.target.value }))}
+          />
+          <Input
+            label="Email *"
+            type="email"
+            value={editData.email}
+            onChange={(e) => setEditData((prev) => ({ ...prev, email: e.target.value }))}
+          />
+          <Input
+            label="Phone *"
+            type="tel"
+            value={editData.phone}
+            onChange={(e) => setEditData((prev) => ({ ...prev, phone: e.target.value }))}
+          />
+
+          <div className="flex gap-3 pt-4">
+            <Button variant="secondary" className="flex-1" onClick={() => setEditModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={handleEditMember}
+              disabled={!editData.name || !editData.role || !editData.company || isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={14} className="mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <><Save size={14} className="mr-2" />Save Changes</>
+              )}
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

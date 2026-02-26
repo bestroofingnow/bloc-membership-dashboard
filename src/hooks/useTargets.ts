@@ -280,6 +280,44 @@ export function useTargets() {
     [isConfigured, canEdit]
   );
 
+  const updateTarget = useCallback(
+    async (
+      targetId: string,
+      updates: { title?: string; priority?: 'high' | 'medium' | 'low' }
+    ): Promise<{ error: string | null }> => {
+      if (!isConfigured) {
+        setCategories((prev) =>
+          prev.map((cat) => ({
+            ...cat,
+            targets: cat.targets.map((t) =>
+              t.id === targetId ? { ...t, ...updates } : t
+            ),
+          }))
+        );
+        return { error: null };
+      }
+
+      if (!canEdit) return { error: 'Permission denied' };
+
+      try {
+        const dbUpdates: any = {};
+        if (updates.title !== undefined) dbUpdates.title = updates.title;
+        if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
+
+        const { error: updateError } = await supabase
+          .from('industry_targets')
+          .update(dbUpdates)
+          .eq('id', targetId);
+
+        if (updateError) return { error: updateError.message };
+        return { error: null };
+      } catch {
+        return { error: 'Failed to update target' };
+      }
+    },
+    [isConfigured, canEdit]
+  );
+
   const addCategory = useCallback(
     async (name: string): Promise<{ error: string | null }> => {
       if (!isConfigured) {
@@ -342,6 +380,7 @@ export function useTargets() {
     assignTarget,
     updateTargetNotes,
     addTarget,
+    updateTarget,
     deleteTarget,
     addCategory,
     deleteCategory,

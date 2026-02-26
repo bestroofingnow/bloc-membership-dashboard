@@ -112,6 +112,47 @@ export function useBoardMembers() {
     }
   };
 
+  const updateBoardMember = async (
+    id: string,
+    updates: Partial<BoardMember>
+  ): Promise<boolean> => {
+    if (!isConfigured) {
+      setBoardMembers((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, ...updates } : m))
+      );
+      return true;
+    }
+
+    if (!canEdit) {
+      setError('You do not have permission to update board members');
+      return false;
+    }
+
+    try {
+      const dbUpdates: any = {};
+      if (updates.role !== undefined) dbUpdates.role = updates.role;
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.company !== undefined) dbUpdates.company = updates.company;
+      if (updates.email !== undefined) dbUpdates.email = updates.email;
+      if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+
+      const { error: updateError } = await supabase
+        .from('board_members')
+        .update(dbUpdates)
+        .eq('id', id);
+
+      if (updateError) {
+        setError(updateError.message);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      setError('Failed to update board member');
+      return false;
+    }
+  };
+
   const deleteBoardMember = async (id: string): Promise<boolean> => {
     if (!isConfigured) {
       setBoardMembers((prev) => prev.filter((m) => m.id !== id));
@@ -158,6 +199,7 @@ export function useBoardMembers() {
     loading,
     error,
     addBoardMember,
+    updateBoardMember,
     deleteBoardMember,
     clearError,
     refetch: fetchBoardMembers,

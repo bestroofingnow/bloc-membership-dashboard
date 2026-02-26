@@ -17,9 +17,10 @@ import {
   Globe,
   ArrowRight,
   XCircle,
+  Save,
 } from 'lucide-react';
 import { Card, Badge, Button, Modal, Input } from '@/components/ui';
-import { pipelineStages } from '@/data/guests';
+import { pipelineStages, getNextStepText } from '@/data/guests';
 import { Guest, GuestStatus } from '@/types';
 import { useGuests } from '@/hooks/useGuests';
 import { useBoardMembers } from '@/hooks/useBoardMembers';
@@ -163,7 +164,7 @@ function GuestCard({
 }
 
 export function PipelineTab() {
-  const { guests, loading, error, addGuest, advanceGuest, deleteGuest } = useGuests();
+  const { guests, loading, error, addGuest, updateGuest, advanceGuest, deleteGuest } = useGuests();
   const { boardMembers } = useBoardMembers();
   const { signups, loading: signupsLoading, promoteToGuest, dismissSignup } = useSignups();
   const { canEdit } = useAuth();
@@ -223,9 +224,37 @@ export function PipelineTab() {
     setIsSubmitting(false);
   };
 
+  // Edit guest form state
+  const [editGuestData, setEditGuestData] = useState<Partial<Guest>>({});
+
   const handleEditGuest = (guest: Guest) => {
     setSelectedGuest(guest);
+    setEditGuestData({
+      name: guest.name,
+      company: guest.company,
+      industry: guest.industry,
+      invitedBy: guest.invitedBy,
+      email: guest.email,
+      phone: guest.phone,
+      status: guest.status,
+      notes: guest.notes,
+    });
     setEditModalOpen(true);
+  };
+
+  const handleSaveGuest = async () => {
+    if (!canEdit || !selectedGuest) return;
+    setIsSubmitting(true);
+    const updates: Partial<Guest> = { ...editGuestData };
+    if (updates.status && updates.status !== selectedGuest.status) {
+      updates.nextStep = getNextStepText(updates.status);
+    }
+    const result = await updateGuest(selectedGuest.id, updates);
+    if (result) {
+      setEditModalOpen(false);
+      setSelectedGuest(null);
+    }
+    setIsSubmitting(false);
   };
 
   const handleDeleteGuest = async () => {
@@ -479,69 +508,98 @@ export function PipelineTab() {
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
         title={`Edit: ${selectedGuest?.name || ''}`}
-        size="sm"
+        size="md"
       >
         {selectedGuest && (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-slate-600">
-                <Building2 size={16} />
-                <span>{selectedGuest.company}</span>
-              </div>
-              {selectedGuest.email && (
-                <div className="flex items-center gap-2 text-slate-600">
-                  <Mail size={16} />
-                  <a
-                    href={`mailto:${selectedGuest.email}`}
-                    className="hover:text-bloc-blue"
-                  >
-                    {selectedGuest.email}
-                  </a>
-                </div>
-              )}
-              {selectedGuest.phone && (
-                <div className="flex items-center gap-2 text-slate-600">
-                  <Phone size={16} />
-                  <a
-                    href={`tel:${selectedGuest.phone}`}
-                    className="hover:text-bloc-blue"
-                  >
-                    {selectedGuest.phone}
-                  </a>
-                </div>
-              )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Name"
+                value={editGuestData.name || ''}
+                onChange={(e) => setEditGuestData((p) => ({ ...p, name: e.target.value }))}
+              />
+              <Input
+                label="Company"
+                value={editGuestData.company || ''}
+                onChange={(e) => setEditGuestData((p) => ({ ...p, company: e.target.value }))}
+              />
+              <Input
+                label="Industry"
+                value={editGuestData.industry || ''}
+                onChange={(e) => setEditGuestData((p) => ({ ...p, industry: e.target.value }))}
+              />
+              <Input
+                label="Invited By"
+                value={editGuestData.invitedBy || ''}
+                onChange={(e) => setEditGuestData((p) => ({ ...p, invitedBy: e.target.value }))}
+              />
+              <Input
+                label="Email"
+                type="email"
+                value={editGuestData.email || ''}
+                onChange={(e) => setEditGuestData((p) => ({ ...p, email: e.target.value }))}
+              />
+              <Input
+                label="Phone"
+                type="tel"
+                value={editGuestData.phone || ''}
+                onChange={(e) => setEditGuestData((p) => ({ ...p, phone: e.target.value }))}
+              />
             </div>
 
-            <div className="pt-4 border-t">
-              <p className="text-sm text-slate-500 mb-2">Current Status</p>
-              <Badge variant="info">{selectedGuest.status}</Badge>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Pipeline Status
+              </label>
+              <select
+                value={editGuestData.status || selectedGuest.status}
+                onChange={(e) => setEditGuestData((p) => ({ ...p, status: e.target.value as GuestStatus }))}
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
+              >
+                {pipelineStages.map((s) => (
+                  <option key={s.status} value={s.status}>{s.label}</option>
+                ))}
+                <option value="Declined">Declined</option>
+              </select>
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Notes
+              </label>
+              <textarea
+                value={editGuestData.notes || ''}
+                onChange={(e) => setEditGuestData((p) => ({ ...p, notes: e.target.value }))}
+                rows={3}
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none resize-none"
+                placeholder="Add notes about this guest..."
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
               {canEdit && (
                 <Button
                   variant="danger"
-                  className="flex-1"
+                  size="sm"
                   onClick={handleDeleteGuest}
                   disabled={isSubmitting}
                 >
+                  Remove
+                </Button>
+              )}
+              <div className="flex-1" />
+              <Button variant="secondary" onClick={() => setEditModalOpen(false)}>
+                Cancel
+              </Button>
+              {canEdit && (
+                <Button onClick={handleSaveGuest} disabled={isSubmitting}>
                   {isSubmitting ? (
-                    <>
-                      <Loader2 size={14} className="mr-2 animate-spin" />
-                      Removing...
-                    </>
+                    <><Loader2 size={14} className="mr-2 animate-spin" />Saving...</>
                   ) : (
-                    'Remove Guest'
+                    <><Save size={14} className="mr-2" />Save</>
                   )}
                 </Button>
               )}
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onClick={() => setEditModalOpen(false)}
-              >
-                Close
-              </Button>
             </div>
           </div>
         )}

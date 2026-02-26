@@ -13,6 +13,8 @@ import {
   Plus,
   Trash2,
   FolderPlus,
+  Pencil,
+  Save,
 } from 'lucide-react';
 import { Card, Badge, Button, Modal, Input } from '@/components/ui';
 import { useTargets } from '@/hooks/useTargets';
@@ -40,6 +42,7 @@ export function TargetsTab() {
     targetsByPriority,
     assignTarget,
     addTarget,
+    updateTarget,
     deleteTarget,
     addCategory,
     deleteCategory,
@@ -60,6 +63,23 @@ export function TargetsTab() {
   const [newTargetPriority, setNewTargetPriority] = useState<'high' | 'medium' | 'low'>('medium');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Edit target state
+  const [editTargetModal, setEditTargetModal] = useState(false);
+  const [editTargetData, setEditTargetData] = useState<{ id: string; title: string; priority: 'high' | 'medium' | 'low' }>({ id: '', title: '', priority: 'medium' });
+
+  const openEditTarget = (target: IndustryTarget) => {
+    setEditTargetData({ id: target.id, title: target.title, priority: target.priority });
+    setEditTargetModal(true);
+  };
+
+  const handleEditTarget = async () => {
+    if (!editTargetData.id || !editTargetData.title.trim()) return;
+    setIsSubmitting(true);
+    await updateTarget(editTargetData.id, { title: editTargetData.title.trim(), priority: editTargetData.priority });
+    setEditTargetModal(false);
+    setIsSubmitting(false);
+  };
 
   const toggleCategory = (name: string) => {
     setExpandedCategories((prev) =>
@@ -274,13 +294,22 @@ export function TargetsTab() {
                             </Button>
                           )}
                           {canEdit && (
-                            <button
-                              onClick={() => handleDeleteTarget(target.id)}
-                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Remove target"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            <>
+                              <button
+                                onClick={() => openEditTarget(target)}
+                                className="p-1.5 text-slate-400 hover:text-bloc-blue hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Edit target"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTarget(target.id)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Remove target"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -407,6 +436,52 @@ export function TargetsTab() {
                 </>
               ) : (
                 'Add Category'
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Target Modal */}
+      <Modal
+        isOpen={editTargetModal}
+        onClose={() => setEditTargetModal(false)}
+        title="Edit Target"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Industry / Role Title"
+            value={editTargetData.title}
+            onChange={(e) => setEditTargetData((p) => ({ ...p, title: e.target.value }))}
+          />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Priority
+            </label>
+            <select
+              value={editTargetData.priority}
+              onChange={(e) => setEditTargetData((p) => ({ ...p, priority: e.target.value as 'high' | 'medium' | 'low' }))}
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
+            >
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" className="flex-1" onClick={() => setEditTargetModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={handleEditTarget}
+              disabled={!editTargetData.title.trim() || isSubmitting}
+            >
+              {isSubmitting ? (
+                <><Loader2 size={14} className="mr-2 animate-spin" />Saving...</>
+              ) : (
+                <><Save size={14} className="mr-2" />Save</>
               )}
             </Button>
           </div>

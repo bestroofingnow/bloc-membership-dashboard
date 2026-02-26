@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Users, Building2, Briefcase, Download, Loader2, UserPlus, Trash2, Shield, Mail, Phone, Globe, MapPin, Calendar, UserCheck, ChevronRight } from 'lucide-react';
+import { Users, Building2, Briefcase, Download, Loader2, UserPlus, Trash2, Shield, Mail, Phone, Globe, MapPin, Calendar, UserCheck, ChevronRight, Pencil, Save, X } from 'lucide-react';
 import { Card, Badge, SearchInput, Button, Modal, Input } from '@/components/ui';
 import { useMembers } from '@/hooks/useMembers';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
@@ -22,7 +22,7 @@ const chapterFilters: { value: ChapterFilter; label: string }[] = [
 const chapters: ChapterName[] = ['North', 'South', 'Uptown', 'FLOC', 'Alumni'];
 
 export function MembersTab() {
-  const { members, chapterCounts, loading, error, addMember, deleteMember } = useMembers();
+  const { members, chapterCounts, loading, error, addMember, updateMember, deleteMember } = useMembers();
   const { canEdit, isAdmin } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [chapterFilter, setChapterFilter] = useState<ChapterFilter>('all');
@@ -40,6 +40,37 @@ export function MembersTab() {
 
   // Member detail state
   const [detailMember, setDetailMember] = useState<Member | null>(null);
+  const [isEditingMember, setIsEditingMember] = useState(false);
+  const [editMemberData, setEditMemberData] = useState<Partial<Member>>({});
+  const [editMemberSaving, setEditMemberSaving] = useState(false);
+
+  const startEditMember = (member: Member) => {
+    setEditMemberData({ ...member });
+    setIsEditingMember(true);
+  };
+
+  const cancelEditMember = () => {
+    setIsEditingMember(false);
+    setEditMemberData({});
+  };
+
+  const handleSaveMember = async () => {
+    if (!detailMember) return;
+    setEditMemberSaving(true);
+    const result = await updateMember(detailMember.id, editMemberData);
+    if (result) {
+      setDetailMember({ ...detailMember, ...editMemberData } as Member);
+      setIsEditingMember(false);
+      setEditMemberData({});
+    }
+    setEditMemberSaving(false);
+  };
+
+  const closeDetailModal = () => {
+    setDetailMember(null);
+    setIsEditingMember(false);
+    setEditMemberData({});
+  };
 
   // Role management state
   const [roleModalMember, setRoleModalMember] = useState<Member | null>(null);
@@ -49,15 +80,18 @@ export function MembersTab() {
   const [roleModalError, setRoleModalError] = useState<string | null>(null);
   const [roleModalSuccess, setRoleModalSuccess] = useState<string | null>(null);
 
+  const [roleModalNoAccount, setRoleModalNoAccount] = useState(false);
+
   const openRoleModal = async (member: Member) => {
     setRoleModalMember(member);
     setRoleModalError(null);
     setRoleModalSuccess(null);
     setRoleModalProfileId(null);
     setRoleModalRole('member');
+    setRoleModalNoAccount(false);
 
     if (!member.email) {
-      setRoleModalError('This member has no email on file. They need an email to have an account.');
+      setRoleModalError('This member has no email on file.');
       return;
     }
 
@@ -72,7 +106,7 @@ export function MembersTab() {
       if (fetchErr) {
         setRoleModalError(`Failed to look up account: ${fetchErr.message}`);
       } else if (!data) {
-        setRoleModalError(`No account found for ${member.email}. They need to sign up first.`);
+        setRoleModalNoAccount(true);
       } else {
         setRoleModalProfileId(data.id);
         setRoleModalRole(data.role as UserRole);
@@ -476,11 +510,11 @@ export function MembersTab() {
       {/* Member Detail Modal */}
       <Modal
         isOpen={!!detailMember}
-        onClose={() => setDetailMember(null)}
-        title="Member Profile"
+        onClose={closeDetailModal}
+        title={isEditingMember ? 'Edit Member' : 'Member Profile'}
         size="lg"
       >
-        {detailMember && (
+        {detailMember && !isEditingMember && (
           <div className="space-y-5">
             {/* Header */}
             <div className="flex items-start gap-4">
@@ -499,6 +533,15 @@ export function MembersTab() {
                   )}
                 </div>
               </div>
+              {isAdmin && (
+                <button
+                  onClick={() => startEditMember(detailMember)}
+                  className="p-2 text-slate-400 hover:text-bloc-blue hover:bg-blue-50 rounded-lg transition-colors"
+                  title="Edit member"
+                >
+                  <Pencil size={18} />
+                </button>
+              )}
             </div>
 
             {/* Company */}
@@ -583,6 +626,60 @@ export function MembersTab() {
             )}
           </div>
         )}
+
+        {detailMember && isEditingMember && (
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input label="Name" value={editMemberData.name || ''} onChange={(e) => setEditMemberData((p) => ({ ...p, name: e.target.value }))} />
+              <Input label="Company" value={editMemberData.company || ''} onChange={(e) => setEditMemberData((p) => ({ ...p, company: e.target.value }))} />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Chapter</label>
+                <select
+                  value={editMemberData.chapter || 'North'}
+                  onChange={(e) => setEditMemberData((p) => ({ ...p, chapter: e.target.value as ChapterName }))}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
+                >
+                  {chapters.map((ch) => (<option key={ch} value={ch}>{ch}</option>))}
+                </select>
+              </div>
+              <Input label="Industry" value={editMemberData.industry || ''} onChange={(e) => setEditMemberData((p) => ({ ...p, industry: e.target.value }))} />
+              <Input label="Title" value={editMemberData.title || ''} onChange={(e) => setEditMemberData((p) => ({ ...p, title: e.target.value }))} />
+              <Input label="Email" type="email" value={editMemberData.email || ''} onChange={(e) => setEditMemberData((p) => ({ ...p, email: e.target.value }))} />
+              <Input label="Phone" type="tel" value={editMemberData.phone || ''} onChange={(e) => setEditMemberData((p) => ({ ...p, phone: e.target.value }))} />
+              <Input label="Mobile Phone" type="tel" value={editMemberData.mobilePhone || ''} onChange={(e) => setEditMemberData((p) => ({ ...p, mobilePhone: e.target.value }))} />
+              <Input label="Website" value={editMemberData.website || ''} onChange={(e) => setEditMemberData((p) => ({ ...p, website: e.target.value }))} />
+              <Input label="Birthday" value={editMemberData.birthday || ''} onChange={(e) => setEditMemberData((p) => ({ ...p, birthday: e.target.value }))} placeholder="MM/DD" />
+              <Input label="Member Since" value={editMemberData.memberSince || ''} onChange={(e) => setEditMemberData((p) => ({ ...p, memberSince: e.target.value }))} />
+              <Input label="Renewal Due" value={editMemberData.renewalDue || ''} onChange={(e) => setEditMemberData((p) => ({ ...p, renewalDue: e.target.value }))} />
+              <Input label="Referred By" value={editMemberData.referredBy || ''} onChange={(e) => setEditMemberData((p) => ({ ...p, referredBy: e.target.value }))} />
+            </div>
+            <div className="sm:col-span-2">
+              <Input label="Address" value={editMemberData.address || ''} onChange={(e) => setEditMemberData((p) => ({ ...p, address: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Company Description</label>
+              <textarea
+                value={editMemberData.description || ''}
+                onChange={(e) => setEditMemberData((p) => ({ ...p, description: e.target.value }))}
+                rows={3}
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none resize-none"
+              />
+            </div>
+            <div className="flex gap-3 pt-2 sticky bottom-0 bg-white pb-1">
+              <Button variant="secondary" className="flex-1" onClick={cancelEditMember}>
+                <X size={14} className="mr-2" />
+                Cancel
+              </Button>
+              <Button className="flex-1" onClick={handleSaveMember} disabled={editMemberSaving}>
+                {editMemberSaving ? (
+                  <><Loader2 size={14} className="mr-2 animate-spin" />Saving...</>
+                ) : (
+                  <><Save size={14} className="mr-2" />Save Changes</>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Role Management Modal */}
@@ -620,6 +717,23 @@ export function MembersTab() {
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="w-5 h-5 animate-spin text-bloc-blue" />
                 <span className="ml-2 text-sm text-slate-600">Looking up account...</span>
+              </div>
+            )}
+
+            {roleModalNoAccount && !roleModalLoading && (
+              <div className="space-y-3">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                  <p className="font-medium">No dashboard account yet</p>
+                  <p className="mt-1">
+                    This member hasn&apos;t signed up for the dashboard yet. Once they create an account
+                    with <strong>{roleModalMember?.email}</strong>, you can assign their role here.
+                  </p>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <Button variant="secondary" className="flex-1" onClick={() => setRoleModalMember(null)}>
+                    Close
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -668,7 +782,7 @@ export function MembersTab() {
               </>
             )}
 
-            {!roleModalProfileId && !roleModalLoading && (
+            {!roleModalProfileId && !roleModalNoAccount && !roleModalLoading && !roleModalError && (
               <div className="flex gap-3 pt-2">
                 <Button variant="secondary" className="flex-1" onClick={() => setRoleModalMember(null)}>
                   Close
