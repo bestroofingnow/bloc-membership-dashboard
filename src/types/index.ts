@@ -47,6 +47,15 @@ export interface Member {
   industry: string;
   email?: string;
   phone?: string;
+  title?: string;
+  website?: string;
+  description?: string;
+  address?: string;
+  mobilePhone?: string;
+  birthday?: string;
+  memberSince?: string;
+  renewalDue?: string;
+  referredBy?: string;
   joinDate?: string;
 }
 

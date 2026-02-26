@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Users, Building2, Briefcase, Download, Loader2, UserPlus, Trash2, Shield } from 'lucide-react';
+import { Users, Building2, Briefcase, Download, Loader2, UserPlus, Trash2, Shield, Mail, Phone, Globe, MapPin, Calendar, UserCheck, ChevronRight } from 'lucide-react';
 import { Card, Badge, SearchInput, Button, Modal, Input } from '@/components/ui';
 import { useMembers } from '@/hooks/useMembers';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
@@ -37,6 +37,9 @@ export function MembersTab() {
     email: '',
     phone: '',
   });
+
+  // Member detail state
+  const [detailMember, setDetailMember] = useState<Member | null>(null);
 
   // Role management state
   const [roleModalMember, setRoleModalMember] = useState<Member | null>(null);
@@ -287,7 +290,8 @@ export function MembersTab() {
               {filteredMembers.map((member) => (
                 <tr
                   key={member.id}
-                  className="hover:bg-slate-50 transition-colors"
+                  className="hover:bg-slate-50 transition-colors cursor-pointer"
+                  onClick={() => setDetailMember(member)}
                 >
                   <td className="p-4">
                     <div className="flex items-center gap-3">
@@ -297,9 +301,14 @@ export function MembersTab() {
                           .map((n) => n[0])
                           .join('')}
                       </div>
-                      <span className="font-medium text-slate-900">
-                        {member.name}
-                      </span>
+                      <div>
+                        <span className="font-medium text-slate-900">
+                          {member.name}
+                        </span>
+                        {member.title && (
+                          <p className="text-xs text-slate-400">{member.title}</p>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="p-4">
@@ -318,7 +327,7 @@ export function MembersTab() {
                     </div>
                   </td>
                   {canEdit && (
-                    <td className="p-4 text-right">
+                    <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
                         {isAdmin && (
                           <button
@@ -462,6 +471,118 @@ export function MembersTab() {
             )}
           </Button>
         </div>
+      </Modal>
+
+      {/* Member Detail Modal */}
+      <Modal
+        isOpen={!!detailMember}
+        onClose={() => setDetailMember(null)}
+        title="Member Profile"
+        size="lg"
+      >
+        {detailMember && (
+          <div className="space-y-5">
+            {/* Header */}
+            <div className="flex items-start gap-4">
+              <div className="w-16 h-16 rounded-full bg-bloc-blue/10 flex items-center justify-center text-bloc-blue text-xl font-bold flex-shrink-0">
+                {detailMember.name.split(' ').map((n) => n[0]).join('')}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-xl font-bold text-slate-900">{detailMember.name}</h3>
+                {detailMember.title && (
+                  <p className="text-slate-600">{detailMember.title}</p>
+                )}
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge chapter={detailMember.chapter}>{detailMember.chapter}</Badge>
+                  {detailMember.industry && (
+                    <span className="text-sm text-slate-500">{detailMember.industry}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Company */}
+            <div className="p-4 bg-slate-50 rounded-lg space-y-2">
+              <div className="flex items-center gap-2 font-medium text-slate-900">
+                <Building2 size={16} className="text-bloc-blue" />
+                {detailMember.company}
+              </div>
+              {detailMember.description && (
+                <p className="text-sm text-slate-600 leading-relaxed">{detailMember.description}</p>
+              )}
+            </div>
+
+            {/* Contact Info */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {detailMember.email && (
+                <a href={`mailto:${detailMember.email}`} className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 hover:border-bloc-blue hover:bg-blue-50/50 transition-colors">
+                  <Mail size={16} className="text-bloc-blue flex-shrink-0" />
+                  <span className="text-sm text-slate-700 truncate">{detailMember.email}</span>
+                </a>
+              )}
+              {detailMember.phone && (
+                <a href={`tel:${detailMember.phone}`} className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 hover:border-bloc-blue hover:bg-blue-50/50 transition-colors">
+                  <Phone size={16} className="text-bloc-blue flex-shrink-0" />
+                  <span className="text-sm text-slate-700">{detailMember.phone}</span>
+                </a>
+              )}
+              {detailMember.mobilePhone && detailMember.mobilePhone !== detailMember.phone && (
+                <a href={`tel:${detailMember.mobilePhone}`} className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 hover:border-bloc-blue hover:bg-blue-50/50 transition-colors">
+                  <Phone size={16} className="text-green-600 flex-shrink-0" />
+                  <span className="text-sm text-slate-700">{detailMember.mobilePhone} <span className="text-slate-400">(mobile)</span></span>
+                </a>
+              )}
+              {detailMember.website && (
+                <a href={detailMember.website.startsWith('http') ? detailMember.website : `https://${detailMember.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 hover:border-bloc-blue hover:bg-blue-50/50 transition-colors">
+                  <Globe size={16} className="text-bloc-blue flex-shrink-0" />
+                  <span className="text-sm text-slate-700 truncate">{detailMember.website}</span>
+                </a>
+              )}
+              {detailMember.address && (
+                <div className="flex items-start gap-2 p-3 rounded-lg border border-slate-200 sm:col-span-2">
+                  <MapPin size={16} className="text-bloc-blue flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-slate-700">{detailMember.address}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Membership Details */}
+            {(detailMember.memberSince || detailMember.birthday || detailMember.referredBy) && (
+              <div className="border-t border-slate-200 pt-4 space-y-2">
+                <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Membership</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {detailMember.memberSince && (
+                    <div className="flex items-center gap-2">
+                      <Calendar size={14} className="text-slate-400" />
+                      <div>
+                        <p className="text-xs text-slate-400">Member Since</p>
+                        <p className="text-sm text-slate-700">{detailMember.memberSince}</p>
+                      </div>
+                    </div>
+                  )}
+                  {detailMember.birthday && (
+                    <div className="flex items-center gap-2">
+                      <Calendar size={14} className="text-slate-400" />
+                      <div>
+                        <p className="text-xs text-slate-400">Birthday</p>
+                        <p className="text-sm text-slate-700">{detailMember.birthday}</p>
+                      </div>
+                    </div>
+                  )}
+                  {detailMember.referredBy && (
+                    <div className="flex items-center gap-2">
+                      <UserCheck size={14} className="text-slate-400" />
+                      <div>
+                        <p className="text-xs text-slate-400">Referred By</p>
+                        <p className="text-sm text-slate-700">{detailMember.referredBy}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
 
       {/* Role Management Modal */}

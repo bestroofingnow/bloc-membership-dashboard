@@ -15,6 +15,15 @@ function transformDbToMember(row: any): Member {
     industry: row.industry,
     email: row.email || undefined,
     phone: row.phone || undefined,
+    title: row.title || undefined,
+    website: row.website || undefined,
+    description: row.description || undefined,
+    address: row.address || undefined,
+    mobilePhone: row.mobile_phone || undefined,
+    birthday: row.birthday || undefined,
+    memberSince: row.member_since || undefined,
+    renewalDue: row.renewal_due || undefined,
+    referredBy: row.referred_by || undefined,
   };
 }
 
@@ -108,6 +117,15 @@ export function useMembers() {
           industry: memberData.industry,
           email: memberData.email || null,
           phone: memberData.phone || null,
+          title: memberData.title || null,
+          website: memberData.website || null,
+          description: memberData.description || null,
+          address: memberData.address || null,
+          mobile_phone: memberData.mobilePhone || null,
+          birthday: memberData.birthday || null,
+          member_since: memberData.memberSince || null,
+          renewal_due: memberData.renewalDue || null,
+          referred_by: memberData.referredBy || null,
         }])
         .select()
         .single();
@@ -148,6 +166,15 @@ export function useMembers() {
       if (updates.industry !== undefined) dbUpdates.industry = updates.industry;
       if (updates.email !== undefined) dbUpdates.email = updates.email || null;
       if (updates.phone !== undefined) dbUpdates.phone = updates.phone || null;
+      if (updates.title !== undefined) dbUpdates.title = updates.title || null;
+      if (updates.website !== undefined) dbUpdates.website = updates.website || null;
+      if (updates.description !== undefined) dbUpdates.description = updates.description || null;
+      if (updates.address !== undefined) dbUpdates.address = updates.address || null;
+      if (updates.mobilePhone !== undefined) dbUpdates.mobile_phone = updates.mobilePhone || null;
+      if (updates.birthday !== undefined) dbUpdates.birthday = updates.birthday || null;
+      if (updates.memberSince !== undefined) dbUpdates.member_since = updates.memberSince || null;
+      if (updates.renewalDue !== undefined) dbUpdates.renewal_due = updates.renewalDue || null;
+      if (updates.referredBy !== undefined) dbUpdates.referred_by = updates.referredBy || null;
 
       const { data, error: updateError } = await supabase
         .from('members')
