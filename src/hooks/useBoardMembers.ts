@@ -43,9 +43,10 @@ export function useBoardMembers() {
       if (fetchError) {
         setError(fetchError.message);
         console.error('Error fetching board members:', fetchError);
-      } else if (data) {
-        setBoardMembers(data.length > 0 ? data.map(transformDbToBoardMember) : []);
+      } else if (data && data.length > 0) {
+        setBoardMembers(data.map(transformDbToBoardMember));
       }
+      // If empty, keep static fallback data
     } catch (err) {
       console.error('Fetch board members error:', err);
       setError('Failed to load board members');

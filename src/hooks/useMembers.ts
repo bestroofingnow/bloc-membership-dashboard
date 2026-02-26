@@ -40,9 +40,10 @@ export function useMembers() {
       if (fetchError) {
         setError(fetchError.message);
         console.error('Error fetching members:', fetchError);
-      } else if (data) {
-        setMembers(data.length > 0 ? data.map(transformDbToMember) : []);
+      } else if (data && data.length > 0) {
+        setMembers(data.map(transformDbToMember));
       }
+      // If empty, keep static fallback data
     } catch (err) {
       console.error('Fetch members error:', err);
       setError('Failed to load members');

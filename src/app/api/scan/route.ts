@@ -76,6 +76,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
+        // Fallback: 'claude-3-5-sonnet-20241022' if model not available
         max_tokens: 1024,
         messages: [
           {
@@ -116,8 +117,21 @@ Return ONLY the JSON object, no other text.`,
     if (!response.ok) {
       const errorData = await response.text();
       console.error('Anthropic API error:', response.status, errorData);
+
+      // Parse error details for user-facing message
+      let errorMessage = `Anthropic API error (${response.status})`;
+      try {
+        const parsed = JSON.parse(errorData);
+        if (parsed.error?.message) {
+          errorMessage = parsed.error.message;
+        }
+      } catch {
+        // Use raw text if not JSON
+        if (errorData.length < 200) errorMessage = errorData;
+      }
+
       return NextResponse.json(
-        { error: 'Failed to analyze business card. Please try again.' },
+        { error: `Scanner error: ${errorMessage}` },
         { status: 502 }
       );
     }

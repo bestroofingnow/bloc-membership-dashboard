@@ -61,9 +61,10 @@ export function useGuests() {
       if (fetchError) {
         setError(fetchError.message);
         console.error('Error fetching guests:', fetchError);
-      } else if (data) {
-        setGuests(data.length > 0 ? data.map(transformDbToGuest) : []);
+      } else if (data && data.length > 0) {
+        setGuests(data.map(transformDbToGuest));
       }
+      // If empty, keep static fallback data
     } catch (err) {
       console.error('Fetch guests error:', err);
       setError('Failed to load guests');

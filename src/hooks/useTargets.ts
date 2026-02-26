@@ -89,9 +89,8 @@ export function useTargets() {
 
         setCategoryIds(idMap);
         setCategories(transformedCategories);
-      } else {
-        setCategories([]);
       }
+      // If empty, keep static fallback data
     } catch (err) {
       console.error('Fetch targets error:', err);
       setError('Failed to load industry targets');
