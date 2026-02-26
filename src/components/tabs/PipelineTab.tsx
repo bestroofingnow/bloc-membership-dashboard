@@ -167,7 +167,7 @@ export function PipelineTab() {
   const { guests, loading, error, addGuest, updateGuest, advanceGuest, deleteGuest } = useGuests();
   const { boardMembers } = useBoardMembers();
   const { signups, loading: signupsLoading, promoteToGuest, dismissSignup } = useSignups();
-  const { canEdit } = useAuth();
+  const { canEdit, isAdmin } = useAuth();
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -577,7 +577,7 @@ export function PipelineTab() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              {canEdit && (
+              {isAdmin && (
                 <Button
                   variant="danger"
                   size="sm"

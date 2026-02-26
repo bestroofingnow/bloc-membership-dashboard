@@ -50,7 +50,7 @@ export function TargetsTab() {
     error,
   } = useTargets();
   const { boardMembers } = useBoardMembers();
-  const { canEdit } = useAuth();
+  const { canEdit, isAdmin } = useAuth();
 
   const [expandedCategories, setExpandedCategories] = useState<string[]>(
     categories.map((c) => c.name)
@@ -179,7 +179,7 @@ export function TargetsTab() {
       </div>
 
       {/* Add Category Button */}
-      {canEdit && (
+      {isAdmin && (
         <div className="flex justify-end">
           <Button variant="secondary" onClick={() => setAddCategoryModal(true)}>
             <FolderPlus size={16} className="mr-2" />
@@ -218,7 +218,7 @@ export function TargetsTab() {
                   </div>
                 </button>
                 <div className="flex items-center gap-2">
-                  {canEdit && (
+                  {isAdmin && (
                     <>
                       <Button
                         variant="ghost"
@@ -294,22 +294,22 @@ export function TargetsTab() {
                             </Button>
                           )}
                           {canEdit && (
-                            <>
-                              <button
-                                onClick={() => openEditTarget(target)}
-                                className="p-1.5 text-slate-400 hover:text-bloc-blue hover:bg-blue-50 rounded-lg transition-colors"
-                                title="Edit target"
-                              >
-                                <Pencil size={14} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteTarget(target.id)}
-                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Remove target"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </>
+                            <button
+                              onClick={() => openEditTarget(target)}
+                              className="p-1.5 text-slate-400 hover:text-bloc-blue hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit target"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleDeleteTarget(target.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Remove target"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           )}
                         </div>
                       </div>

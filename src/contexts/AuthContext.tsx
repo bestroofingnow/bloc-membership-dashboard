@@ -22,6 +22,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   isConfigured: boolean;
+  isDeactivated: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -39,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeactivated, setIsDeactivated] = useState(false);
   const isConfigured = isSupabaseConfigured();
 
   const fetchProfile = useCallback(async (userId: string) => {
@@ -52,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (fetchError) {
         console.error('Error fetching profile:', fetchError);
@@ -65,6 +67,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: data.role as UserRole,
           chapter: data.chapter as ChapterName | null,
         });
+        setIsDeactivated(false);
+      } else {
+        // User is authenticated but has no profile — account was deactivated
+        setProfile(null);
+        setIsDeactivated(true);
       }
     } catch (err) {
       console.error('Profile fetch error:', err);
@@ -211,6 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         error,
         isConfigured,
+        isDeactivated,
         signIn,
         signUp,
         signOut,

@@ -90,7 +90,7 @@ function BoardMemberCard({
 
 export function LeadershipTab() {
   const { boardMembers, loading, error, addBoardMember, updateBoardMember, deleteBoardMember } = useBoardMembers();
-  const { canEdit } = useAuth();
+  const { isAdmin } = useAuth();
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -253,7 +253,7 @@ export function LeadershipTab() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          {canEdit && (
+          {isAdmin && (
             <Button onClick={() => setAddModalOpen(true)}>
               <UserPlus size={16} className="mr-2" />
               Add
@@ -273,7 +273,7 @@ export function LeadershipTab() {
           <BoardMemberCard
             key={member.id || index}
             member={member}
-            canEdit={canEdit}
+            canEdit={isAdmin}
             onDelete={(id) => setDeleteConfirmId(id)}
             onEdit={openEditModal}
           />

@@ -313,7 +313,7 @@ export function MembersTab() {
                 <th className="text-left p-4 text-sm font-semibold text-slate-600">
                   Industry
                 </th>
-                {canEdit && (
+                {(canEdit || isAdmin) && (
                   <th className="text-right p-4 text-sm font-semibold text-slate-600 w-20">
                     Actions
                   </th>
@@ -360,7 +360,7 @@ export function MembersTab() {
                       {member.industry}
                     </div>
                   </td>
-                  {canEdit && (
+                  {(canEdit || isAdmin) && (
                     <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
                         {isAdmin && (
@@ -372,13 +372,15 @@ export function MembersTab() {
                             <Shield size={16} />
                           </button>
                         )}
-                        <button
-                          onClick={() => setDeleteConfirmId(member.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Remove member"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => setDeleteConfirmId(member.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Remove member"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   )}
@@ -533,7 +535,7 @@ export function MembersTab() {
                   )}
                 </div>
               </div>
-              {isAdmin && (
+              {canEdit && (
                 <button
                   onClick={() => startEditMember(detailMember)}
                   className="p-2 text-slate-400 hover:text-bloc-blue hover:bg-blue-50 rounded-lg transition-colors"

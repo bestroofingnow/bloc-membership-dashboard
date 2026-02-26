@@ -85,11 +85,34 @@ export function useProfiles() {
     }
   };
 
+  const deleteProfile = async (userId: string): Promise<{ error: string | null }> => {
+    if (!isConfigured) {
+      return { error: 'Supabase not configured' };
+    }
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (deleteError) {
+        return { error: deleteError.message };
+      }
+
+      await fetchProfiles();
+      return { error: null };
+    } catch (err) {
+      return { error: 'Failed to remove user' };
+    }
+  };
+
   return {
     profiles,
     loading,
     error,
     updateProfile,
+    deleteProfile,
     refetch: fetchProfiles,
   };
 }

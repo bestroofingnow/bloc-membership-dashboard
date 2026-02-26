@@ -12,8 +12,9 @@ import {
   RefreshCw,
   Calendar,
   Database,
+  Trash2,
 } from 'lucide-react';
-import { Card, Badge, Button } from '@/components/ui';
+import { Card, Badge, Button, Modal } from '@/components/ui';
 import { useProfiles, Profile } from '@/hooks/useProfiles';
 import { useAuth, UserRole, ChapterName } from '@/contexts/AuthContext';
 import { useWildApricot } from '@/hooks/useWildApricot';
@@ -36,11 +37,13 @@ function UserCard({
   profile,
   onRoleChange,
   onChapterChange,
+  onRemove,
   currentUserId,
 }: {
   profile: Profile;
   onRoleChange: (userId: string, role: UserRole) => Promise<void>;
   onChapterChange: (userId: string, chapter: ChapterName | null) => Promise<void>;
+  onRemove: (profile: Profile) => void;
   currentUserId: string | undefined;
 }) {
   const [updating, setUpdating] = useState(false);
@@ -130,6 +133,16 @@ function UserCard({
               ))}
             </select>
           )}
+
+          {!isCurrentUser && (
+            <button
+              onClick={() => onRemove(profile)}
+              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Remove user access"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
         </div>
       </div>
     </Card>
@@ -138,7 +151,9 @@ function UserCard({
 
 export function AdminTab() {
   const { profile: currentProfile, isConfigured } = useAuth();
-  const { profiles, loading, error, updateProfile } = useProfiles();
+  const { profiles, loading, error, updateProfile, deleteProfile } = useProfiles();
+  const [removeConfirm, setRemoveConfirm] = useState<Profile | null>(null);
+  const [removing, setRemoving] = useState(false);
   const {
     syncing,
     lastResult,
@@ -155,6 +170,14 @@ export function AdminTab() {
 
   const handleChapterChange = async (userId: string, chapter: ChapterName | null) => {
     await updateProfile(userId, { chapter });
+  };
+
+  const handleRemoveUser = async () => {
+    if (!removeConfirm) return;
+    setRemoving(true);
+    await deleteProfile(removeConfirm.id);
+    setRemoving(false);
+    setRemoveConfirm(null);
   };
 
   if (!isConfigured) {
@@ -235,6 +258,7 @@ export function AdminTab() {
                 profile={profile}
                 onRoleChange={handleRoleChange}
                 onChapterChange={handleChapterChange}
+                onRemove={setRemoveConfirm}
                 currentUserId={currentProfile?.id}
               />
             ))}
@@ -255,6 +279,7 @@ export function AdminTab() {
               profile={profile}
               onRoleChange={handleRoleChange}
               onChapterChange={handleChapterChange}
+              onRemove={setRemoveConfirm}
               currentUserId={currentProfile?.id}
             />
           ))}
@@ -412,6 +437,54 @@ export function AdminTab() {
           </Card>
         </div>
       )}
+
+      {/* Remove User Confirmation Modal */}
+      <Modal
+        isOpen={!!removeConfirm}
+        onClose={() => setRemoveConfirm(null)}
+        title="Remove User Access"
+        size="sm"
+      >
+        {removeConfirm && (
+          <div className="space-y-4">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+              <p className="font-medium">This will revoke dashboard access for:</p>
+              <p className="mt-1">
+                <strong>{removeConfirm.fullName || removeConfirm.email}</strong>
+                {removeConfirm.fullName && (
+                  <span className="text-red-600"> ({removeConfirm.email})</span>
+                )}
+              </p>
+              <p className="mt-2 text-red-600">
+                They will see an &ldquo;Account Deactivated&rdquo; message next time they log in.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="secondary" className="flex-1" onClick={() => setRemoveConfirm(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                className="flex-1"
+                onClick={handleRemoveUser}
+                disabled={removing}
+              >
+                {removing ? (
+                  <>
+                    <Loader2 size={14} className="mr-2 animate-spin" />
+                    Removing...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} className="mr-2" />
+                    Remove Access
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
