@@ -138,8 +138,10 @@ CREATE POLICY "Directors can assign targets"
 -- FIX BUSINESS CARD SCANS POLICIES (if table exists)
 -- ============================================
 
-DROP POLICY IF EXISTS "Admins can manage scans" ON business_card_scans;
-CREATE POLICY "Admins can manage scans"
-  ON business_card_scans FOR ALL
-  TO authenticated
-  USING (public.is_admin());
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'business_card_scans') THEN
+    EXECUTE 'DROP POLICY IF EXISTS "Admins can manage scans" ON business_card_scans';
+    EXECUTE 'CREATE POLICY "Admins can manage scans" ON business_card_scans FOR ALL TO authenticated USING (public.is_admin())';
+  END IF;
+END $$;
