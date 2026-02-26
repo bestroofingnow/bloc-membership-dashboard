@@ -79,28 +79,22 @@ export function MembersTab() {
   const [roleModalProfileId, setRoleModalProfileId] = useState<string | null>(null);
   const [roleModalError, setRoleModalError] = useState<string | null>(null);
   const [roleModalSuccess, setRoleModalSuccess] = useState<string | null>(null);
+  const [roleModalEmail, setRoleModalEmail] = useState('');
 
   const [roleModalNoAccount, setRoleModalNoAccount] = useState(false);
 
-  const openRoleModal = async (member: Member) => {
-    setRoleModalMember(member);
+  const lookupProfile = async (email: string) => {
+    if (!email) return;
+    setRoleModalLoading(true);
     setRoleModalError(null);
     setRoleModalSuccess(null);
     setRoleModalProfileId(null);
-    setRoleModalRole('member');
     setRoleModalNoAccount(false);
-
-    if (!member.email) {
-      setRoleModalError('This member has no email on file.');
-      return;
-    }
-
-    setRoleModalLoading(true);
     try {
       const { data, error: fetchErr } = await supabase
         .from('profiles')
         .select('id, role')
-        .eq('email', member.email)
+        .eq('email', email)
         .maybeSingle();
 
       if (fetchErr) {
@@ -115,6 +109,21 @@ export function MembersTab() {
       setRoleModalError('Failed to look up account.');
     } finally {
       setRoleModalLoading(false);
+    }
+  };
+
+  const openRoleModal = async (member: Member) => {
+    setRoleModalMember(member);
+    setRoleModalError(null);
+    setRoleModalSuccess(null);
+    setRoleModalProfileId(null);
+    setRoleModalRole('member');
+    setRoleModalNoAccount(false);
+    const email = member.email || '';
+    setRoleModalEmail(email);
+
+    if (email) {
+      await lookupProfile(email);
     }
   };
 
@@ -699,7 +708,39 @@ export function MembersTab() {
               </div>
               <div>
                 <p className="font-medium text-slate-900">{roleModalMember.name}</p>
-                <p className="text-sm text-slate-500">{roleModalMember.email || 'No email'}</p>
+                <p className="text-sm text-slate-500">{roleModalMember.company}</p>
+              </div>
+            </div>
+
+            {/* Email input for profile lookup */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Email Address
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={roleModalEmail}
+                  onChange={(e) => {
+                    setRoleModalEmail(e.target.value);
+                    setRoleModalProfileId(null);
+                    setRoleModalNoAccount(false);
+                    setRoleModalError(null);
+                    setRoleModalSuccess(null);
+                  }}
+                  placeholder="Enter member email..."
+                  className="flex-1 px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
+                />
+                <Button
+                  onClick={() => lookupProfile(roleModalEmail)}
+                  disabled={!roleModalEmail || roleModalLoading}
+                >
+                  {roleModalLoading ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    'Look Up'
+                  )}
+                </Button>
               </div>
             </div>
 
@@ -715,82 +756,60 @@ export function MembersTab() {
               </div>
             )}
 
-            {roleModalLoading && !roleModalProfileId && (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="w-5 h-5 animate-spin text-bloc-blue" />
-                <span className="ml-2 text-sm text-slate-600">Looking up account...</span>
-              </div>
-            )}
-
             {roleModalNoAccount && !roleModalLoading && (
-              <div className="space-y-3">
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                  <p className="font-medium">No dashboard account yet</p>
-                  <p className="mt-1">
-                    This member hasn&apos;t signed up for the dashboard yet. Once they create an account
-                    with <strong>{roleModalMember?.email}</strong>, you can assign their role here.
-                  </p>
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <Button variant="secondary" className="flex-1" onClick={() => setRoleModalMember(null)}>
-                    Close
-                  </Button>
-                </div>
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                <p className="font-medium">No dashboard account found</p>
+                <p className="mt-1">
+                  No account exists for <strong>{roleModalEmail}</strong>. They need to sign up for the
+                  dashboard first, then you can assign their role here.
+                </p>
               </div>
             )}
 
             {roleModalProfileId && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Dashboard Role
-                  </label>
-                  <select
-                    value={roleModalRole}
-                    onChange={(e) => {
-                      setRoleModalRole(e.target.value as UserRole);
-                      setRoleModalSuccess(null);
-                    }}
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
-                  >
-                    <option value="member">Member (view only)</option>
-                    <option value="chapter_director">Chapter Director (can edit their chapter)</option>
-                    <option value="admin">Admin (full access)</option>
-                  </select>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <Button variant="secondary" className="flex-1" onClick={() => setRoleModalMember(null)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    className="flex-1"
-                    onClick={handleRoleSave}
-                    disabled={roleModalLoading}
-                  >
-                    {roleModalLoading ? (
-                      <>
-                        <Loader2 size={14} className="mr-2 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Shield size={14} className="mr-2" />
-                        Save Role
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </>
-            )}
-
-            {!roleModalProfileId && !roleModalNoAccount && !roleModalLoading && !roleModalError && (
-              <div className="flex gap-3 pt-2">
-                <Button variant="secondary" className="flex-1" onClick={() => setRoleModalMember(null)}>
-                  Close
-                </Button>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Dashboard Role
+                </label>
+                <select
+                  value={roleModalRole}
+                  onChange={(e) => {
+                    setRoleModalRole(e.target.value as UserRole);
+                    setRoleModalSuccess(null);
+                  }}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
+                >
+                  <option value="member">Member (view only)</option>
+                  <option value="chapter_director">Chapter Director (can edit their chapter)</option>
+                  <option value="admin">Admin (full access)</option>
+                </select>
               </div>
             )}
+
+            <div className="flex gap-3 pt-2">
+              <Button variant="secondary" className="flex-1" onClick={() => setRoleModalMember(null)}>
+                {roleModalProfileId ? 'Cancel' : 'Close'}
+              </Button>
+              {roleModalProfileId && (
+                <Button
+                  className="flex-1"
+                  onClick={handleRoleSave}
+                  disabled={roleModalLoading}
+                >
+                  {roleModalLoading ? (
+                    <>
+                      <Loader2 size={14} className="mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Shield size={14} className="mr-2" />
+                      Save Role
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </Modal>
