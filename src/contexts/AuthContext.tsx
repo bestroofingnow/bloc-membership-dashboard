@@ -13,6 +13,7 @@ export interface UserProfile {
   fullName: string | null;
   role: UserRole;
   chapter: ChapterName | null;
+  mustChangePassword: boolean;
 }
 
 interface AuthContextType {
@@ -26,6 +27,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  changePassword: (newPassword: string) => Promise<{ error: string | null }>;
   isAdmin: boolean;
   isDirector: boolean;
   canEdit: boolean;
@@ -66,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           fullName: data.full_name,
           role: data.role as UserRole,
           chapter: data.chapter as ChapterName | null,
+          mustChangePassword: data.must_change_password ?? false,
         });
         setIsDeactivated(false);
       } else {
@@ -192,6 +195,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const changePassword = async (newPassword: string): Promise<{ error: string | null }> => {
+    if (!isConfigured) {
+      return { error: 'Supabase is not configured' };
+    }
+
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) {
+        return { error: updateError.message };
+      }
+
+      // Clear the must_change_password flag in the profile
+      if (user) {
+        await supabase
+          .from('profiles')
+          .update({ must_change_password: false })
+          .eq('id', user.id);
+
+        // Update local state
+        setProfile(prev => prev ? { ...prev, mustChangePassword: false } : prev);
+      }
+
+      return { error: null };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to change password';
+      return { error: message };
+    }
+  };
+
   const signOut = async () => {
     if (!isConfigured) return;
 
@@ -222,6 +254,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signIn,
         signUp,
         signOut,
+        changePassword,
         isAdmin,
         isDirector,
         canEdit,

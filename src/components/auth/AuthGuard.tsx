@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { LoginForm } from './LoginForm';
+import { ChangePasswordModal } from './ChangePasswordModal';
 import { Loader2, ShieldOff } from 'lucide-react';
 
 interface AuthGuardProps {
@@ -10,7 +11,7 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children, fallback }: AuthGuardProps) {
-  const { user, loading, isConfigured, isDeactivated, signOut } = useAuth();
+  const { user, profile, loading, isConfigured, isDeactivated, signOut } = useAuth();
 
   // Show loading spinner while checking auth
   if (loading) {
@@ -54,6 +55,11 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
         </div>
       </div>
     );
+  }
+
+  // User must change their password before proceeding
+  if (profile?.mustChangePassword) {
+    return <ChangePasswordModal />;
   }
 
   // User is authenticated
