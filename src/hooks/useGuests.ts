@@ -140,7 +140,14 @@ export function useGuests() {
         return null;
       }
 
-      return data ? transformDbToGuest(data) : newGuest;
+      // Update local state immediately for better UX
+      if (data) {
+        const createdGuest = transformDbToGuest(data);
+        setGuests((prev) => [createdGuest, ...prev]);
+        return createdGuest;
+      }
+
+      return newGuest;
     } catch (err) {
       setError('Failed to add guest');
       return null;
@@ -179,7 +186,16 @@ export function useGuests() {
         return null;
       }
 
-      return data ? transformDbToGuest(data) : null;
+      // Update local state immediately for better UX
+      if (data) {
+        const updatedGuest = transformDbToGuest(data);
+        setGuests((prev) =>
+          prev.map((g) => (g.id === updatedGuest.id ? updatedGuest : g))
+        );
+        return updatedGuest;
+      }
+
+      return null;
     } catch (err) {
       setError('Failed to update guest');
       return null;
@@ -222,6 +238,8 @@ export function useGuests() {
         return false;
       }
 
+      // Update local state immediately
+      setGuests((prev) => prev.filter((g) => g.id !== id));
       return true;
     } catch (err) {
       setError('Failed to delete guest');
