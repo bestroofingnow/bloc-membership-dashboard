@@ -3,6 +3,50 @@ import { Guest, GuestStatus } from '@/types';
 const generateId = () => Math.random().toString(36).substring(2, 11);
 const now = new Date().toISOString();
 
+const aprilAfterHoursGuests: Guest[] = [
+  { name: 'Amanda Hoffmann', company: '', email: 'ahoffmann@hcgadvisor.com' },
+  { name: 'Juli West', company: 'Subcontain Commercial Waste Management', email: 'juli.west@subcontain.com', phone: '336 782 8454' },
+  { name: 'Melinda Schmidt', company: '', email: 'melinda@melindarae.com' },
+  { name: 'Sarah McKinney', company: '', email: 'Sarah.mckinney@in-elements.com' },
+  { name: 'Ty Jaco', company: '', email: 'tjaco@ft.newyorklife.com' },
+  { name: 'Steve Shober', company: 'Shober Employee Benefit Services LLC', email: 'steve.shober@cbrealty.com', phone: '7048776771' },
+  { name: 'Glenn Bouley', company: 'Bouley Printing Company', email: 'gebouley@bouleyprinting.com', phone: '704-737-7573' },
+  { name: 'Emmett Everest', company: 'Tom James Company', email: 'emmett.everest@gmail.com', phone: '9196193106' },
+  { name: 'Max Trenz', company: '', email: 'maxtrenz19@gmail.com' },
+  { name: 'Lauren Desmond', company: 'Merrill Lynch', email: 'lauren.desmond715@gmail.com', phone: '3146512027' },
+  { name: 'Jack Fullagar', company: 'CarolinaPEO', email: 'jack@carolinapeo.com', phone: '7046498739' },
+  { name: 'Chris Poole', company: 'First Bank', email: 'Chris.poole@localfirstbank.com', phone: '7046975056' },
+  { name: 'Rich Rezny', company: 'Manness CPA' },
+  { name: 'Markel Pollard', company: 'Liftology' },
+  { name: 'Maxwell Doherty', company: 'SouthState Bank', email: 'maxwell.doherty@southstatebank.com', phone: '7042906852' },
+  { name: 'Sharon Peterson', company: 'COOL-BINZ of Charlotte', email: 'sharon.peterson@cool-binz.com', phone: '704.895.COOL' },
+  { name: 'Kayleigh Gildart', company: 'Experient', email: 'kgildart@experient.com', phone: '704 681 3345' },
+  { name: 'Tristen Fairfax', company: '', email: 'tf021y@att.com' },
+  { name: 'Sophie Levinson', company: 'USI Insurance Services', email: 'sophie.levinson@usi.com', phone: '7047708682' },
+  { name: 'Judith Keck', company: 'Inside Out', email: 'judy.keck@aol.com', phone: '17045175840' },
+  { name: 'Aubrey Turner', company: 'Nutritionist Aubrey', email: 'aubrey@whollywellnessllc.com', phone: '7049981905' },
+  { name: 'Vlad Stepanov', company: '', email: 'vlad711994@gmail.com' },
+  { name: 'BJ Sabol', company: 'Ameriprise Financial', email: 'bradford.j.sabol@ampf.com', phone: '9804402255' },
+  { name: 'Tatiana Guzman', company: 'Rug Source INC', email: 'info@rugsource.com', phone: '9808197373' },
+  { name: 'Avery Kirby', company: 'Mitchell Martin', email: 'avery.kirby@itmmi.com' },
+  { name: 'Keegan Nimblett', company: 'Mitchell Martin Inc.', email: 'keegan.nimblett@itmmi.com', phone: '7042771084' },
+  { name: 'Lara Persing', company: 'Contents Restoration', email: 'lara@contentsrestorationservices.com', phone: '980-704-5755' },
+  { name: 'Emma Dozier', company: 'DeSensi Insurance Agency', email: 'emma.dozier.vaitv5@statefarm.com', phone: '7047634858' },
+  { name: 'Leah Offutt', company: 'Maersk', email: 'leah.korgaard.offutt@maersk.com', phone: '7044302042' },
+].map((guest): Guest => ({
+  id: generateId(),
+  name: guest.name,
+  company: guest.company,
+  invitedBy: 'April After Hours guest list',
+  status: 'After Hours Done',
+  nextStep: 'Invite to Chapter Lunch',
+  email: guest.email,
+  phone: guest.phone,
+  notes: 'Imported from April After Hours guest list.',
+  createdAt: now,
+  updatedAt: now,
+}));
+
 export const initialGuests: Guest[] = [
   {
     id: generateId(),
@@ -82,6 +126,7 @@ export const initialGuests: Guest[] = [
     createdAt: now,
     updatedAt: now,
   },
+  ...aprilAfterHoursGuests,
 ];
 
 // Pipeline stages in order
