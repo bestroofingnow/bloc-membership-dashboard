@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   // 2) Re-fetch members and compute conflict server-side (source of truth).
   const { data: members } = await sb
     .from('members')
-    .select('id,chapter,industry_id,category_id,full_name,business_name')
+    .select('id,chapter,industry_id,category_id,full_name:name,business_name:company')
     .eq('chapter', p.chapter);
   const cf = conflict({
     chapter: p.chapter as ChapterCode,

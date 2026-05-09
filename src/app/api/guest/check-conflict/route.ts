@@ -36,7 +36,7 @@ export async function GET(req: Request) {
   const sb = getServerSupabase();
   const { data: members, error } = await sb
     .from('members')
-    .select('id,chapter,industry_id,category_id,full_name,business_name')
+    .select('id,chapter,industry_id,category_id,full_name:name,business_name:company')
     .eq('chapter', chapter);
 
   if (error) {

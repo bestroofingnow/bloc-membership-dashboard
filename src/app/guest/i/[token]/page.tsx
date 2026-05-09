@@ -20,7 +20,7 @@ export default async function GuestLandingPage({ params }: Props) {
   let inviter = null;
   if (payload.invited_by_member_id) {
     const { data } = await sb.from('members')
-      .select('full_name')
+      .select('full_name:name')
       .eq('id', payload.invited_by_member_id).single();
     inviter = data;
   }

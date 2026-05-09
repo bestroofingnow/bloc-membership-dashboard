@@ -28,7 +28,7 @@ export default async function ChapterRosterPage({ params, searchParams }: Props)
     .select(`
       member_id,
       public_business_name,
-      members!inner(id,full_name,business_name)
+      members!inner(id,full_name:name,business_name:company)
     `)
     .eq('chapter', chapter)
     .eq('visible', true);
