@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { getServerSupabase } from '@/lib/guest/supabase-server';
 
 interface Props {
@@ -11,14 +12,24 @@ export default async function ConfirmPage({ params, searchParams }: Props) {
   if (!sp.rsvp) {
     return <main className="mx-auto max-w-2xl px-6 py-12"><p>Missing RSVP id.</p></main>;
   }
+  const cookieStore = await cookies();
+  const recentRsvp = cookieStore.get('intake_recent_rsvp')?.value;
+  const guestIdCookie = cookieStore.get('intake_guest_id')?.value;
   const sb = getServerSupabase();
   const { data: rsvp } = await sb
     .from('intake_rsvps')
-    .select('id,events!inner(title,starts_at,location_name)')
+    .select('id,guest_id,events!inner(title,starts_at,location_name)')
     .eq('id', sp.rsvp)
     .maybeSingle();
   if (!rsvp) {
     return <main className="mx-auto max-w-2xl px-6 py-12"><p>RSVP not found.</p></main>;
+  }
+  const guestId = (rsvp as unknown as { guest_id: string }).guest_id;
+  const authorized =
+    recentRsvp === rsvp.id ||
+    (!!guestIdCookie && guestId === guestIdCookie);
+  if (!authorized) {
+    return <main className="mx-auto max-w-2xl px-6 py-12"><p>Not authorized to view this RSVP.</p></main>;
   }
   const ev = (rsvp as unknown as { events: { title: string; starts_at: string; location_name: string | null } }).events;
 

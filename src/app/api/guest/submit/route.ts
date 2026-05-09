@@ -8,6 +8,7 @@ import { getEmailClient } from '@/lib/guest/email';
 import { buildIcs } from '@/lib/guest/ics';
 import { mintMagic } from '@/lib/guest/magic';
 import { ipFromHeaders, rateLimit } from '@/lib/guest/rate-limit';
+import { verifyToken } from '@/lib/guest/tokens';
 
 const submitSchema = z.object({
   token: z.string(),
@@ -45,7 +46,33 @@ export async function POST(req: Request) {
     );
   }
   const p = parsed.data;
+
+  // Verify the QR token; the token is the authoritative source for attribution.
+  const tokenPayload = await verifyToken(p.token);
+  if (!tokenPayload) {
+    return NextResponse.json({ error: 'invalid_token' }, { status: 401 });
+  }
   const sb = getServerSupabase();
+  const { data: tokenRow } = await sb
+    .from('qr_tokens')
+    .select('id,chapter,event_id,invited_by_member_id,revoked_at')
+    .eq('token', p.token)
+    .maybeSingle();
+  if (!tokenRow || tokenRow.revoked_at) {
+    return NextResponse.json({ error: 'invalid_token' }, { status: 401 });
+  }
+
+  // If the token pinned a chapter or event, the body MUST match.
+  if (tokenRow.chapter && tokenRow.chapter !== p.chapter) {
+    return NextResponse.json({ error: 'token_chapter_mismatch' }, { status: 400 });
+  }
+  if (tokenRow.event_id && tokenRow.event_id !== p.event_id) {
+    return NextResponse.json({ error: 'token_event_mismatch' }, { status: 400 });
+  }
+
+  // Authoritative attribution comes from the token row, not the body.
+  const authoritativeQrTokenId = tokenRow.id;
+  const authoritativeInvitedByMemberId = tokenRow.invited_by_member_id;
 
   // 1) Event must be public_visible and in the future.
   const { data: event, error: evErr } = await sb
@@ -114,8 +141,10 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   let rsvpId: string;
+  let writeConflictLog = false;
   if (existingRsvp && existingRsvp.status !== 'canceled') {
     rsvpId = existingRsvp.id;
+    // idempotent — no audit log refresh
   } else if (existingRsvp && existingRsvp.status === 'canceled') {
     const { error: upErr } = await sb
       .from('intake_rsvps')
@@ -123,14 +152,15 @@ export async function POST(req: Request) {
       .eq('id', existingRsvp.id);
     if (upErr) return NextResponse.json({ error: 'db_error' }, { status: 500 });
     rsvpId = existingRsvp.id;
+    writeConflictLog = true;
   } else {
     const { data: rsvp, error: rsErr } = await sb
       .from('intake_rsvps')
       .insert({
         guest_id: guest.id,
         event_id: p.event_id,
-        qr_token_id: p.qr_token_id,
-        invited_by_member_id: p.invited_by_member_id,
+        qr_token_id: authoritativeQrTokenId,
+        invited_by_member_id: authoritativeInvitedByMemberId,
         conflict_kind: cf.kind,
         conflict_member_id: cf.occupants[0]?.id ?? null,
         status: 'registered',
@@ -143,9 +173,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'db_error' }, { status: 500 });
     }
     rsvpId = rsvp.id;
+    writeConflictLog = true;
+  }
 
-    // conflict_log only on first insert
-    await sb.from('intake_conflict_log').insert({
+  if (writeConflictLog) {
+    const { error: logErr } = await sb.from('intake_conflict_log').insert({
       rsvp_id: rsvpId,
       chapter: p.chapter,
       industry_id: p.industry_id,
@@ -158,6 +190,7 @@ export async function POST(req: Request) {
         category_id: m.category_id,
       })),
     });
+    if (logErr) console.error('intake_conflict_log insert', logErr);
   }
 
   // 6) Magic link (only mint a fresh one — store hash on guest)
@@ -224,5 +257,13 @@ export async function POST(req: Request) {
     });
   }
 
-  return NextResponse.json({ rsvp_id: rsvpId, conflict_kind: cf.kind });
+  const res = NextResponse.json({ rsvp_id: rsvpId, conflict_kind: cf.kind });
+  res.cookies.set('intake_recent_rsvp', rsvpId, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 30 * 60, // 30 minutes
+  });
+  return res;
 }
