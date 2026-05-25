@@ -91,6 +91,7 @@ This is your `GUEST_TOKEN_SECRET`. Treat it like a password — anyone with this
    | `GHL_LOCATION_ID` | GHL Location ID | Required only if GHL_API_KEY set |
    | `ENABLE_DEV_MINT` | (leave unset) | Setting to `true` re-enables `/api/guest/dev/mint` outside prod |
    | Wild Apricot vars | per legacy docs | Optional |
+   | `NEXT_PUBLIC_SITE_URL` | `https://your-domain.com` | Used by `sitemap.xml`. Defaults to the BLOC production URL if unset. |
 
 4. Deploy. The first build takes ~2 minutes.
 

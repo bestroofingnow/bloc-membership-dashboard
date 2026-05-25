@@ -73,6 +73,7 @@ Without Supabase environment variables, the app runs in **demo mode** with stati
 
 | Guide | Description |
 |---|---|
+| [What's Implemented](docs/IMPLEMENTED.md) | Full inventory of routes, tabs, libs, tests — your "do we already have…?" cheat sheet |
 | [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md) | End-to-end Vercel + Supabase + Resend + GHL setup |
 | [Supabase Setup](docs/SUPABASE_SETUP.md) | Database, auth, and realtime configuration |
 | [Deployment](docs/DEPLOYMENT.md) | Deploy to Vercel with custom domain |
