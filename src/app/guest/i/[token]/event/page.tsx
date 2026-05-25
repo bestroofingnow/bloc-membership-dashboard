@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { resolveToken } from '../_resolve';
 import { getServerSupabase } from '@/lib/guest/supabase-server';
 
@@ -9,14 +10,9 @@ export default async function EventPickerPage({ params }: Props) {
   const { payload } = await resolveToken(token);
 
   if (payload.event_id) {
-    // Token already pinned event; skip ahead
+    // Token already pinned event; skip ahead via a server redirect.
     const next = payload.chapter ? 'details' : 'chapter';
-    return (
-      <main className="mx-auto max-w-2xl px-6 py-12">
-        <p>Redirecting…</p>
-        <meta httpEquiv="refresh" content={`0;url=/guest/i/${token}/${next}`} />
-      </main>
-    );
+    redirect(`/guest/i/${token}/${next}`);
   }
 
   const sb = getServerSupabase();
