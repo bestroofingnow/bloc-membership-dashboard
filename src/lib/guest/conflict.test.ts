@@ -121,4 +121,20 @@ describe('conflict()', () => {
     });
     expect(res.kind).toBe('exact');
   });
+
+  // Caller contract: visibility filtering is the caller's concern for the public
+  // roster preview ONLY. The conflict engine must consider all chapter members
+  // regardless of roster visibility — an "invisible" member still holds a category
+  // seat that conflicts with a guest's pick. Caller must pass the unfiltered list.
+  test('member invisible in public roster still counts as conflict (caller contract)', () => {
+    const m = member(); // visibility is not a field on MemberForConflict by design
+    const res = conflict({
+      chapter: 'Uptown',
+      industry_id: 'ind-real-estate',
+      category_id: 'cat-residential-agent',
+      members_in_chapter: [m],
+    });
+    expect(res.kind).toBe('exact');
+    expect(res.occupants).toEqual([m]);
+  });
 });
