@@ -104,7 +104,7 @@ export async function POST(req: Request) {
   const { data: existingMember } = await sb
     .from('members')
     .select('id')
-    .eq('email', emailNormalized)
+    .ilike('email', emailNormalized)
     .maybeSingle();
   const isExistingMember = !!existingMember;
 
