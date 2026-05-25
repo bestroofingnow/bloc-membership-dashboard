@@ -1,9 +1,32 @@
 /** @type {import('next').NextConfig} */
+const securityHeaders = [
+  // Forbid clickjacking; the dashboard should never be embedded.
+  { key: 'X-Frame-Options', value: 'DENY' },
+  // MIME-sniff protection.
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  // Don't leak referrer to third parties.
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  // Browsers: require HTTPS in production.
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  // Lock down powerful APIs we don't use.
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(self), microphone=(), geolocation=(), interest-cohort=()',
+  },
+];
+
 const nextConfig = {
   reactStrictMode: true,
-  images: {
-    unoptimized: true,
+  images: { unoptimized: true },
+  async headers() {
+    return [
+      {
+        // Apply to all routes
+        source: '/(.*)',
+        headers: securityHeaders,
+      },
+    ];
   },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
