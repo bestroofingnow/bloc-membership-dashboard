@@ -30,8 +30,9 @@ import {
   RosterTab,
   MyProfileTab,
   MemberTaxonomyTab,
+  SeatMapTab,
 } from '@/components/tabs';
-import { Inbox, CalendarDays, QrCode, Users2, UserCircle, Sparkles } from 'lucide-react';
+import { Inbox, CalendarDays, QrCode, Users2, UserCircle, Sparkles, Grid3x3 } from 'lucide-react';
 import { AuthGuard } from '@/components/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { TabId } from '@/types';
@@ -135,6 +136,11 @@ function DashboardContent() {
         label: 'Roster',
         icon: <Users2 size={18} />,
         component: <RosterTab />,
+      }, {
+        id: 'seats',
+        label: 'Category Seats',
+        icon: <Grid3x3 size={18} />,
+        component: <SeatMapTab />,
       });
     }
     if (isAdmin) {

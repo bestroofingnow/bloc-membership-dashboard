@@ -112,7 +112,16 @@ export interface DashboardStats {
 }
 
 // Tab configuration
-export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'intake' | 'events' | 'qr' | 'roster' | 'me' | 'taxonomy' | 'admin';
+export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'intake' | 'events' | 'qr' | 'roster' | 'me' | 'taxonomy' | 'seats' | 'admin';
+
+export interface SeatRow {
+  industry_id: string;
+  industry_name: string;
+  category_id: string;
+  category_title: string;
+  occupants: Array<{ member_id: string; member_name: string; member_company: string }>;
+  status: 'open' | 'occupied' | 'multi';
+}
 
 export interface MemberTaxonomyRow {
   member_id: string;

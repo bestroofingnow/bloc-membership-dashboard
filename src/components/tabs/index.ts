@@ -12,3 +12,4 @@ export { QrTokensTab } from './QrTokensTab';
 export { RosterTab } from './RosterTab';
 export { MyProfileTab } from './MyProfileTab';
 export { MemberTaxonomyTab } from './MemberTaxonomyTab';
+export { SeatMapTab } from './SeatMapTab';
