@@ -32,7 +32,7 @@ export function useMyMember() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(async () => {
+  const load = useCallback(async () => {
     if (!isConfigured || !session || !profile?.email) {
       setMember(null);
       setVisibilities([]);
@@ -80,7 +80,8 @@ export function useMyMember() {
       for (const v of (visRows ?? []) as Array<{ chapter: ChapterName; visible: boolean; public_business_name: string | null; public_category_id: string | null }>) {
         visMap.set(v.chapter, { ...v, has_override_row: true });
       }
-      // Member can be visible in their own chapter + any cross-chapter they appear in
+      // Member visibility currently scopes to their own primary chapter.
+      // Cross-chapter rows would be added if a member is featured in multiple chapters.
       const chaptersToShow: ChapterName[] = [m.chapter];
       const result: MyVisibility[] = chaptersToShow.map((ch) => {
         return visMap.get(ch) ?? {
@@ -99,7 +100,7 @@ export function useMyMember() {
     }
   }, [isConfigured, session, profile?.email]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { load(); }, [load]);
 
   const authHeaders = useCallback(async (): Promise<Record<string, string>> => {
     const { data } = await supabase.auth.getSession();
@@ -113,7 +114,7 @@ export function useMyMember() {
     overrides?: { public_business_name?: string | null; public_category_id?: string | null },
   ) => {
     const headers = { 'content-type': 'application/json', ...(await authHeaders()) };
-    const res = await fetch_(`/api/me/roster-visibility`, {
+    const res = await fetch(`/api/me/roster-visibility`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -127,11 +128,8 @@ export function useMyMember() {
       const body = await res.json().catch(() => null);
       throw new Error(body?.error ?? `update_failed_${res.status}`);
     }
-    await fetch();
-  }, [authHeaders, fetch]);
+    await load();
+  }, [authHeaders, load]);
 
-  return { member, visibilities, loading, error, refresh: fetch, setMyVisibility };
+  return { member, visibilities, loading, error, refresh: load, setMyVisibility };
 }
-
-// Alias fetch to avoid shadowing the local `fetch` variable above
-const fetch_ = (globalThis as { fetch: typeof globalThis.fetch }).fetch;
