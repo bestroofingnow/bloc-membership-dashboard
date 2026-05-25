@@ -18,26 +18,45 @@ export default async function ConfirmPage({ params, searchParams }: Props) {
   const sb = getServerSupabase();
   const { data: rsvp } = await sb
     .from('intake_rsvps')
-    .select('id,guest_id,events!inner(title,starts_at,location_name)')
+    .select('id,guest_id,invited_by_member_id,events!inner(title,starts_at,location_name)')
     .eq('id', sp.rsvp)
     .maybeSingle();
   if (!rsvp) {
     return <main className="mx-auto max-w-2xl px-6 py-12"><p>RSVP not found.</p></main>;
   }
-  const guestId = (rsvp as unknown as { guest_id: string }).guest_id;
+  const rsvpTyped = rsvp as unknown as {
+    id: string;
+    guest_id: string;
+    invited_by_member_id: string | null;
+    events: { title: string; starts_at: string; location_name: string | null };
+  };
   const authorized =
     recentRsvp === rsvp.id ||
-    (!!guestIdCookie && guestId === guestIdCookie);
+    (!!guestIdCookie && rsvpTyped.guest_id === guestIdCookie);
   if (!authorized) {
     return <main className="mx-auto max-w-2xl px-6 py-12"><p>Not authorized to view this RSVP.</p></main>;
   }
-  const ev = (rsvp as unknown as { events: { title: string; starts_at: string; location_name: string | null } }).events;
+  const ev = rsvpTyped.events;
+
+  // Look up inviter name so the confirmation can thank them.
+  let inviterName: string | null = null;
+  if (rsvpTyped.invited_by_member_id) {
+    const { data: inviter } = await sb
+      .from('members')
+      .select('full_name:name')
+      .eq('id', rsvpTyped.invited_by_member_id)
+      .maybeSingle();
+    inviterName = (inviter as unknown as { full_name: string } | null)?.full_name ?? null;
+  }
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
       <h1 className="text-3xl font-semibold">You're registered.</h1>
       <p className="mt-3 text-lg">{ev.title}</p>
       <p className="text-gray-600">{new Date(ev.starts_at).toLocaleString()}{ev.location_name ? ` · ${ev.location_name}` : ''}</p>
+      {inviterName && (
+        <p className="mt-2 text-sm text-gray-700">{inviterName} will be looking forward to seeing you there.</p>
+      )}
       <a
         href={`/api/guest/ics/${rsvp.id}`}
         download="event.ics"
