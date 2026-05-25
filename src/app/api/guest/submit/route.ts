@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { conflict } from '@/lib/guest/conflict';
 import type { ChapterCode, MemberForConflict } from '@/lib/guest/types';
@@ -203,8 +204,13 @@ export async function POST(req: Request) {
     })
     .eq('id', guest.id);
 
-  // 7) Clean up the wizard session
-  await sb.from('intake_sessions').delete().eq('id', p.session_id);
+  // 7) Clean up the wizard session — the authoritative session id comes from the
+  // gsid cookie (set by resolveToken), NOT the body. Body session_id is ignored.
+  const cookieStore = await cookies();
+  const cookieSessionId = cookieStore.get('gsid')?.value;
+  if (cookieSessionId) {
+    await sb.from('intake_sessions').delete().eq('id', cookieSessionId);
+  }
 
   // 8) Side effects (non-blocking — log failures, never throw)
   if (!isExistingMember) {
