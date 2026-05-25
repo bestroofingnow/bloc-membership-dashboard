@@ -36,16 +36,17 @@ export function GuestDetailsForm(props: Props) {
     [props.categories, industryId],
   );
 
-  // Live conflict check, debounced
+  // Live conflict check, debounced. Only fires once both Industry and Category are picked —
+  // before that the form is mid-input and a partial check would render a misleading panel.
   useEffect(() => {
-    if (!industryId && !categoryId) { setConflict(null); return; }
+    if (!industryId || !categoryId) { setConflict(null); return; }
     const ac = new AbortController();
     const id = setTimeout(async () => {
       try {
         const qs = new URLSearchParams({
           chapter: props.chapter,
-          ...(industryId ? { industry_id: industryId } : {}),
-          ...(categoryId ? { category_id: categoryId } : {}),
+          industry_id: industryId,
+          category_id: categoryId,
         });
         const res = await fetch(`/api/guest/check-conflict?${qs}`, { signal: ac.signal });
         if (res.ok) setConflict(await res.json());
