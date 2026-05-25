@@ -28,8 +28,9 @@ import {
   EventsTab,
   QrTokensTab,
   RosterTab,
+  MyProfileTab,
 } from '@/components/tabs';
-import { Inbox, CalendarDays, QrCode, Users2 } from 'lucide-react';
+import { Inbox, CalendarDays, QrCode, Users2, UserCircle } from 'lucide-react';
 import { AuthGuard } from '@/components/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { TabId } from '@/types';
@@ -101,6 +102,13 @@ function DashboardContent() {
 
   const tabs = useMemo(() => {
     const allTabs = [...baseTabs];
+    // My Profile is for every authenticated user — appears for Members too.
+    allTabs.push({
+      id: 'me',
+      label: 'My Profile',
+      icon: <UserCircle size={18} />,
+      component: <MyProfileTab />,
+    });
     // Guest Inbox + Events are for directors and admins only — members don't need them.
     if (isAdmin || isDirector) {
       // Insert after Pipeline so the related tabs sit together.

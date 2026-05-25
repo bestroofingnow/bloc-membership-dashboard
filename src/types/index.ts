@@ -112,7 +112,7 @@ export interface DashboardStats {
 }
 
 // Tab configuration
-export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'intake' | 'events' | 'qr' | 'roster' | 'admin';
+export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'intake' | 'events' | 'qr' | 'roster' | 'me' | 'admin';
 
 export interface RosterMember {
   member_id: string;
