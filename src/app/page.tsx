@@ -29,8 +29,9 @@ import {
   QrTokensTab,
   RosterTab,
   MyProfileTab,
+  MemberTaxonomyTab,
 } from '@/components/tabs';
-import { Inbox, CalendarDays, QrCode, Users2, UserCircle } from 'lucide-react';
+import { Inbox, CalendarDays, QrCode, Users2, UserCircle, Sparkles } from 'lucide-react';
 import { AuthGuard } from '@/components/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { TabId } from '@/types';
@@ -138,6 +139,11 @@ function DashboardContent() {
     }
     if (isAdmin) {
       allTabs.push({
+        id: 'taxonomy',
+        label: 'Member Taxonomy',
+        icon: <Sparkles size={18} />,
+        component: <MemberTaxonomyTab />,
+      }, {
         id: 'admin',
         label: 'Admin',
         icon: <Shield size={18} />,

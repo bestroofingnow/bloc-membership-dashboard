@@ -112,7 +112,23 @@ export interface DashboardStats {
 }
 
 // Tab configuration
-export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'intake' | 'events' | 'qr' | 'roster' | 'me' | 'admin';
+export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'intake' | 'events' | 'qr' | 'roster' | 'me' | 'taxonomy' | 'admin';
+
+export interface MemberTaxonomyRow {
+  member_id: string;
+  name: string;
+  company: string;
+  chapter: ChapterName;
+  legacy_industry_text: string | null;
+  current_industry_id: string | null;
+  current_industry_name: string | null;
+  current_category_id: string | null;
+  current_category_title: string | null;
+  suggested_industry_id: string | null;
+  suggested_industry_name: string | null;
+  suggested_category_id: string | null;
+  suggested_category_title: string | null;
+}
 
 export interface RosterMember {
   member_id: string;

@@ -11,3 +11,4 @@ export { EventsTab } from './EventsTab';
 export { QrTokensTab } from './QrTokensTab';
 export { RosterTab } from './RosterTab';
 export { MyProfileTab } from './MyProfileTab';
+export { MemberTaxonomyTab } from './MemberTaxonomyTab';
