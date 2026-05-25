@@ -4,8 +4,15 @@ import { getServerSupabase } from '@/lib/guest/supabase-server';
 import type { ChapterCode, QrTokenKind } from '@/lib/guest/types';
 
 export async function POST(req: Request) {
+  // Dev-only escape hatch — superseded by the dashboard QR Manager in production.
+  // Return 404 (not 403) so the route's existence isn't even hinted at.
   if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+  // Require an opt-in env flag even outside production so it can't be hit
+  // accidentally on a deployed staging or preview.
+  if (process.env.ENABLE_DEV_MINT !== 'true') {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
   const body = await req.json().catch(() => ({}));
   const kind: QrTokenKind = body.kind ?? 'general';
