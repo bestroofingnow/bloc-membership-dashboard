@@ -27,18 +27,27 @@ export function IntakeGuestsTab() {
   const [busyRow, setBusyRow] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const [needsAttention, setNeedsAttention] = useState(false);
+  const [sortBy, setSortBy] = useState<'submitted' | 'event'>('submitted');
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return rows.filter((r) =>
+    const result = rows.filter((r) =>
       (conflictFilter === 'all' || r.conflict_kind === conflictFilter) &&
       (statusFilter === 'all' || r.status === statusFilter) &&
+      (!needsAttention || r.conflict_kind === 'other' || r.has_unresolved_side_effects) &&
       (q === '' ||
         r.first_name.toLowerCase().includes(q) ||
         r.last_name.toLowerCase().includes(q) ||
         r.email.toLowerCase().includes(q) ||
         r.business_name.toLowerCase().includes(q))
     );
-  }, [rows, conflictFilter, statusFilter, search]);
+    return [...result].sort((a, b) => {
+      const av = sortBy === 'submitted' ? a.submitted_at : a.event_starts_at;
+      const bv = sortBy === 'submitted' ? b.submitted_at : b.event_starts_at;
+      return bv.localeCompare(av);
+    });
+  }, [rows, conflictFilter, statusFilter, search, needsAttention, sortBy]);
 
   async function onStatusChange(rsvpId: string, status: IntakeRsvpStatus) {
     setBusyRow(rsvpId);
@@ -90,6 +99,25 @@ export function IntakeGuestsTab() {
           className="rounded border px-3 py-1 min-w-[240px]"
           aria-label="Search guests"
         />
+        <button
+          type="button"
+          onClick={() => setNeedsAttention((v) => !v)}
+          aria-pressed={needsAttention}
+          className={`rounded border px-3 py-1 ${needsAttention ? 'bg-amber-100 border-amber-300 text-amber-900' : 'bg-white hover:bg-gray-50'}`}
+        >
+          Needs attention
+        </button>
+        <label className="flex items-center gap-2">
+          <span className="text-gray-600">Sort:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'submitted' | 'event')}
+            className="rounded border px-2 py-1"
+          >
+            <option value="submitted">Submitted (newest)</option>
+            <option value="event">Event date (soonest)</option>
+          </select>
+        </label>
         <label className="flex items-center gap-2">
           <span className="text-gray-600">Conflict:</span>
           <select
@@ -157,7 +185,12 @@ export function IntakeGuestsTab() {
                 <tr key={r.rsvp_id} className="border-t">
                   <td className="px-3 py-2">
                     <div className="font-medium">{r.first_name} {r.last_name}</div>
-                    <div className="text-xs text-gray-500">{r.email}</div>
+                    <a
+                      href={`mailto:${r.email}`}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      {r.email}
+                    </a>
                   </td>
                   <td className="px-3 py-2">
                     <div>{r.business_name}</div>
