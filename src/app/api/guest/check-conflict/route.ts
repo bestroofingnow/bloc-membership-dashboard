@@ -51,12 +51,25 @@ export async function GET(req: Request) {
     members_in_chapter: (members ?? []) as MemberForConflict[],
   });
 
+  // Look up the occupant's category title for nicer UI copy.
+  let category_name: string | null = null;
+  const occupantCategoryId = result.occupants[0]?.category_id ?? null;
+  if (occupantCategoryId) {
+    const { data: cat } = await sb
+      .from('industry_targets')
+      .select('title')
+      .eq('id', occupantCategoryId)
+      .maybeSingle();
+    category_name = cat?.title ?? null;
+  }
+
   return NextResponse.json({
     kind: result.kind,
     occupant: result.occupants[0]
       ? {
           full_name: result.occupants[0].full_name,
           business_name: result.occupants[0].business_name,
+          category_name,
         }
       : null,
   });

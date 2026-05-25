@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 interface Industry { id: string; name: string }
 interface Category { id: string; industry_id: string; name: string }
-interface Conflict { kind: 'none'|'exact'|'related'|'other'; occupant: { full_name: string; business_name: string } | null }
+interface Conflict { kind: 'none'|'exact'|'related'|'other'; occupant: { full_name: string; business_name: string; category_name: string | null } | null }
 
 interface Props {
   token: string;
@@ -135,12 +135,16 @@ export function GuestDetailsForm(props: Props) {
       )}
 
       {conflict && conflict.kind !== 'none' && (
-        <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">
+        <div
+          className="rounded border border-amber-300 bg-amber-50 p-3 text-sm"
+          role="status"
+          aria-live="polite"
+        >
           {conflict.kind === 'exact' && conflict.occupant && (
-            <>Heads up — <strong>{conflict.occupant.full_name}</strong> ({conflict.occupant.business_name}) currently holds this category seat in {props.chapter}. You're welcome to attend as a guest of the chapter.</>
+            <>Heads up — <strong>{conflict.occupant.full_name}</strong> ({conflict.occupant.business_name}{conflict.occupant.category_name ? ` · ${conflict.occupant.category_name}` : ''}) currently holds this category seat in {props.chapter}. You're welcome to attend as a guest of the chapter.</>
           )}
           {conflict.kind === 'related' && conflict.occupant && (
-            <>FYI — <strong>{conflict.occupant.full_name}</strong> ({conflict.occupant.business_name}) is in a related category in {props.chapter}. You're still welcome to attend.</>
+            <>FYI — <strong>{conflict.occupant.full_name}</strong> ({conflict.occupant.business_name}{conflict.occupant.category_name ? ` · ${conflict.occupant.category_name}` : ''}) is in a related category in {props.chapter}. You're still welcome to attend.</>
           )}
           {conflict.kind === 'other' && (
             <>We'll review your business and follow up about the right category for you.</>
