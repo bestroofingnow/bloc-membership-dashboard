@@ -131,6 +131,20 @@ export function useIntakeGuests() {
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
+  // Realtime: re-fetch on any change to intake_rsvps. Cheaper than a row-by-row
+  // patch and avoids missing edits to joined tables (events, intake_guests).
+  useEffect(() => {
+    if (!isConfigured || !session || (!isAdmin && !isDirector)) return;
+    const ch = supabase
+      .channel('intake-rsvps-feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'intake_rsvps' }, () => fetchRows())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'intake_side_effect_failures' }, () => fetchRows())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [isConfigured, session, isAdmin, isDirector, fetchRows]);
+
   const authHeaders = useCallback(async (): Promise<Record<string, string>> => {
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
