@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -34,6 +34,7 @@ import {
 } from '@/components/tabs';
 import { Inbox, CalendarDays, QrCode, Users2, UserCircle, Sparkles, Grid3x3 } from 'lucide-react';
 import { AuthGuard } from '@/components/auth';
+import { BackToTop } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { TabId } from '@/types';
 
@@ -66,8 +67,33 @@ const baseTabs: TabConfig[] = [
 
 function DashboardContent() {
   const { profile, signOut, isConfigured, isAdmin, isDirector } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  const [activeTab, setActiveTabState] = useState<TabId>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const [paletteIndex, setPaletteIndex] = useState(0);
+
+  // Read initial tab from URL hash on mount; persist on change
+  useEffect(() => {
+    const fromHash = (typeof window !== 'undefined' ? window.location.hash.slice(1) : '') as TabId | '';
+    if (fromHash) setActiveTabState(fromHash as TabId);
+    const onHashChange = () => {
+      const h = window.location.hash.slice(1) as TabId;
+      if (h) setActiveTabState(h);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  const setActiveTab = useCallback((id: TabId) => {
+    setActiveTabState(id);
+    if (typeof window !== 'undefined') {
+      const newHash = `#${id}`;
+      if (window.location.hash !== newHash) {
+        history.replaceState(null, '', newHash);
+      }
+    }
+  }, []);
 
   const displayName = profile?.fullName || 'BLOC Member';
   const displayRole =
@@ -114,6 +140,39 @@ function DashboardContent() {
   }, [tabs]);
 
   const currentTab = tabs.find((t) => t.id === activeTab);
+
+  // Cmd/Ctrl+K opens the command palette; ESC closes
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      const meta = e.metaKey || e.ctrlKey;
+      if (meta && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteQuery('');
+        setPaletteIndex(0);
+        setPaletteOpen(true);
+      } else if (e.key === 'Escape' && paletteOpen) {
+        setPaletteOpen(false);
+      }
+    }
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [paletteOpen]);
+
+  // Update document.title with current tab name
+  useEffect(() => {
+    if (currentTab) {
+      document.title = `${currentTab.label} · BLOC Dashboard`;
+    }
+  }, [currentTab]);
+
+  const paletteMatches = useMemo(() => {
+    const q = paletteQuery.trim().toLowerCase();
+    if (!q) return tabs;
+    return tabs.filter((t) =>
+      t.label.toLowerCase().includes(q) ||
+      GROUP_LABEL[t.group].toLowerCase().includes(q)
+    );
+  }, [tabs, paletteQuery]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -261,9 +320,73 @@ function DashboardContent() {
         )}
       </header>
 
+      {/* Command palette (Cmd/Ctrl+K) */}
+      {paletteOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center pt-24 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Tab switcher"
+          onClick={() => setPaletteOpen(false)}
+        >
+          <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <input
+              autoFocus
+              type="text"
+              placeholder="Jump to tab… (try 'inbox', 'qr', 'admin')"
+              className="w-full p-4 text-base border-b focus:outline-none"
+              value={paletteQuery}
+              onChange={(e) => { setPaletteQuery(e.target.value); setPaletteIndex(0); }}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setPaletteIndex((i) => Math.min(i + 1, paletteMatches.length - 1));
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setPaletteIndex((i) => Math.max(i - 1, 0));
+                } else if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const t = paletteMatches[paletteIndex];
+                  if (t) {
+                    setActiveTab(t.id);
+                    setPaletteOpen(false);
+                  }
+                }
+              }}
+            />
+            <ul className="max-h-80 overflow-y-auto">
+              {paletteMatches.length === 0 ? (
+                <li className="px-4 py-3 text-sm text-gray-500">No tabs match.</li>
+              ) : (
+                paletteMatches.map((t, i) => (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      onMouseEnter={() => setPaletteIndex(i)}
+                      onClick={() => { setActiveTab(t.id); setPaletteOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm ${i === paletteIndex ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                    >
+                      <span className="text-gray-500">{t.icon}</span>
+                      <span className="flex-1">{t.label}</span>
+                      <span className="text-xs uppercase tracking-wide text-gray-400">{GROUP_LABEL[t.group]}</span>
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+            <div className="bg-gray-50 px-4 py-2 text-xs text-gray-500 flex gap-3 border-t">
+              <span><kbd className="rounded border bg-white px-1.5 py-0.5">↑↓</kbd> navigate</span>
+              <span><kbd className="rounded border bg-white px-1.5 py-0.5">Enter</kbd> open</span>
+              <span><kbd className="rounded border bg-white px-1.5 py-0.5">Esc</kbd> close</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {currentTab?.component}
+        <BackToTop />
       </main>
 
       {/* Footer */}

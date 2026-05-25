@@ -5,3 +5,4 @@ export { Input, SearchInput } from './Input';
 export { Modal } from './Modal';
 export { ProgressBar } from './ProgressBar';
 export { StatCard } from './StatCard';
+export { BackToTop } from './BackToTop';

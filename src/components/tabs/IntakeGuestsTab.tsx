@@ -162,6 +162,16 @@ export function IntakeGuestsTab() {
 
       {loading && rows.length === 0 ? (
         <div className="text-sm text-gray-500">Loading guests…</div>
+      ) : rows.length === 0 ? (
+        <div className="rounded border border-dashed p-8 text-center text-sm text-gray-600 space-y-2">
+          <p className="font-medium">No guest RSVPs yet.</p>
+          <p>
+            To get guests flowing in: head to the <strong>QR Codes</strong> tab and mint a QR
+            (general for tent-cards at After Hours, member-invite for personal share, or event-pinned
+            for a specific RSVP page). Print or share the URL — every scan and submission lands here.
+          </p>
+          <p className="text-xs text-gray-500">Tip: ⌘K to jump to any tab.</p>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="rounded border border-dashed p-8 text-center text-sm text-gray-500">
           No guests match the current filters.
