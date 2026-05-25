@@ -24,7 +24,9 @@ import {
   MembershipGuideTab,
   AdminTab,
   ScannerTab,
+  IntakeGuestsTab,
 } from '@/components/tabs';
+import { Inbox } from 'lucide-react';
 import { AuthGuard } from '@/components/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { TabId } from '@/types';
@@ -82,7 +84,7 @@ const baseTabs: TabConfig[] = [
 ];
 
 function DashboardContent() {
-  const { profile, signOut, isConfigured, isAdmin } = useAuth();
+  const { profile, signOut, isConfigured, isAdmin, isDirector } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -96,6 +98,18 @@ function DashboardContent() {
 
   const tabs = useMemo(() => {
     const allTabs = [...baseTabs];
+    // Guest Inbox is for directors and admins only — members don't need it.
+    if (isAdmin || isDirector) {
+      // Insert after Pipeline so the two related tabs sit together.
+      const pipelineIdx = allTabs.findIndex((t) => t.id === 'pipeline');
+      const insertAt = pipelineIdx >= 0 ? pipelineIdx + 1 : allTabs.length;
+      allTabs.splice(insertAt, 0, {
+        id: 'intake',
+        label: 'Guest Inbox',
+        icon: <Inbox size={18} />,
+        component: <IntakeGuestsTab />,
+      });
+    }
     if (isAdmin) {
       allTabs.push({
         id: 'admin',
@@ -105,7 +119,7 @@ function DashboardContent() {
       });
     }
     return allTabs;
-  }, [isAdmin]);
+  }, [isAdmin, isDirector]);
 
   const currentTab = tabs.find((t) => t.id === activeTab);
 

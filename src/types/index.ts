@@ -112,10 +112,33 @@ export interface DashboardStats {
 }
 
 // Tab configuration
-export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'admin';
+export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'intake' | 'admin';
 
 export interface Tab {
   id: TabId;
   label: string;
   icon: string;
+}
+
+// Public-flow intake guest (separate from kanban Guest above — see sub-project A)
+export type IntakeConflictKind = 'none' | 'exact' | 'related' | 'other';
+export type IntakeRsvpStatus = 'registered' | 'attended' | 'no_show' | 'canceled';
+
+export interface IntakeGuestRow {
+  rsvp_id: string;
+  guest_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  business_name: string;
+  other_category_text: string | null;
+  chapter: ChapterName | null;
+  event_title: string;
+  event_starts_at: string;
+  conflict_kind: IntakeConflictKind;
+  conflict_member_name: string | null;
+  status: IntakeRsvpStatus;
+  invited_by_member_name: string | null;
+  submitted_at: string;
+  has_unresolved_side_effects: boolean;
 }
