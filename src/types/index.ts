@@ -112,7 +112,22 @@ export interface DashboardStats {
 }
 
 // Tab configuration
-export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'intake' | 'events' | 'qr' | 'admin';
+export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'intake' | 'events' | 'qr' | 'roster' | 'admin';
+
+export interface RosterMember {
+  member_id: string;
+  member_name: string;
+  member_company: string;
+  member_chapter: ChapterName;
+  member_category_id: string | null;
+  member_category_title: string | null;
+  // Effective visibility / overrides (null override = inherit from member)
+  visible: boolean;
+  public_business_name: string | null;
+  public_category_id: string | null;
+  public_category_title: string | null;
+  has_override_row: boolean;
+}
 
 export type QrTokenKindUI = 'general' | 'chapter' | 'event' | 'member_invite' | 'after_hours';
 

@@ -27,8 +27,9 @@ import {
   IntakeGuestsTab,
   EventsTab,
   QrTokensTab,
+  RosterTab,
 } from '@/components/tabs';
-import { Inbox, CalendarDays, QrCode } from 'lucide-react';
+import { Inbox, CalendarDays, QrCode, Users2 } from 'lucide-react';
 import { AuthGuard } from '@/components/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { TabId } from '@/types';
@@ -120,6 +121,11 @@ function DashboardContent() {
         label: 'QR Codes',
         icon: <QrCode size={18} />,
         component: <QrTokensTab />,
+      }, {
+        id: 'roster',
+        label: 'Roster',
+        icon: <Users2 size={18} />,
+        component: <RosterTab />,
       });
     }
     if (isAdmin) {

@@ -9,3 +9,4 @@ export { ScannerTab } from './ScannerTab';
 export { IntakeGuestsTab } from './IntakeGuestsTab';
 export { EventsTab } from './EventsTab';
 export { QrTokensTab } from './QrTokensTab';
+export { RosterTab } from './RosterTab';
