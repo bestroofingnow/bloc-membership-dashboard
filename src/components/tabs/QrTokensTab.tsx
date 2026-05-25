@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { QrCode, Plus, X, Copy, RotateCcw, Check } from 'lucide-react';
+import { QrCode, Plus, X, Copy, RotateCcw, Check, Printer } from 'lucide-react';
 import { useQrTokens, type MintQrInput } from '@/hooks/useQrTokens';
 import { useEvents } from '@/hooks/useEvents';
 import { useMembers } from '@/hooks/useMembers';
@@ -126,9 +126,38 @@ export function QrTokensTab() {
           <h2 className="text-xl font-semibold flex items-center gap-2"><QrCode size={20} /> QR Manager</h2>
           <p className="text-sm text-gray-600">Mint, label, and revoke QR codes that route guests into the public flow.</p>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-2 rounded bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800">
-          <Plus size={14} /> New QR code
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              document.body.classList.add('print-qrs');
+              window.print();
+              setTimeout(() => document.body.classList.remove('print-qrs'), 200);
+            }}
+            disabled={filtered.length === 0}
+            className="inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50"
+            title="Print visible QR codes as a one-per-page sheet"
+          >
+            <Printer size={14} /> Print sheet
+          </button>
+          <button onClick={openCreate} className="inline-flex items-center gap-2 rounded bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800">
+            <Plus size={14} /> New QR code
+          </button>
+        </div>
+      </div>
+
+      {/* Print-only sheet: one card per visible token */}
+      <div className="hidden print-qr-sheet">
+        {filtered.map((t) => (
+          <div key={`print-${t.id}`} className="print-qr-card">
+            <img src={qrImageUrl(publicUrl(t.token), 600)} alt={`QR for ${t.label ?? t.kind}`} />
+            <div className="print-qr-label">{t.label ?? `BLOC ${t.kind}`}</div>
+            <div className="print-qr-meta">
+              {t.chapter ?? 'Cross-chapter'}{t.event_title ? ` · ${t.event_title}` : ''}
+              {t.invited_by_member_name ? ` · Invited by ${t.invited_by_member_name}` : ''}
+            </div>
+            <div className="print-qr-meta">{publicUrl(t.token)}</div>
+          </div>
+        ))}
       </div>
 
       <label className="flex items-center gap-2 text-sm">
