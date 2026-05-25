@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { User, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { User, Eye, EyeOff, AlertCircle, RotateCcw } from 'lucide-react';
 import { useMyMember } from '@/hooks/useMyMember';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ChapterName } from '@/types';
@@ -95,20 +95,50 @@ export function MyProfileTab() {
                     ? 'Guests will see your name and business on this chapter\'s public roster preview.'
                     : 'You are hidden from this chapter\'s public roster preview.'}
                 </div>
+                {v.has_override_row && (v.public_business_name || v.public_category_id) && (
+                  <div className="text-xs text-amber-700 mt-1">
+                    A director has set custom public overrides on your profile.
+                  </div>
+                )}
               </div>
-              <button
-                type="button"
-                disabled={busy === v.chapter}
-                onClick={() => toggle(v.chapter, !v.visible)}
-                aria-pressed={!v.visible}
-                className={`inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm ${
-                  v.visible
-                    ? 'border-green-200 text-green-700 bg-green-50 hover:bg-green-100'
-                    : 'border-gray-300 text-gray-700 bg-gray-50 hover:bg-gray-100'
-                } disabled:opacity-50`}
-              >
-                {v.visible ? <><Eye size={14} /> Visible</> : <><EyeOff size={14} /> Hidden</>}
-              </button>
+              <div className="flex gap-1 shrink-0">
+                <button
+                  type="button"
+                  disabled={busy === v.chapter}
+                  onClick={() => toggle(v.chapter, !v.visible)}
+                  aria-pressed={!v.visible}
+                  className={`inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm ${
+                    v.visible
+                      ? 'border-green-200 text-green-700 bg-green-50 hover:bg-green-100'
+                      : 'border-gray-300 text-gray-700 bg-gray-50 hover:bg-gray-100'
+                  } disabled:opacity-50`}
+                >
+                  {v.visible ? <><Eye size={14} /> Visible</> : <><EyeOff size={14} /> Hidden</>}
+                </button>
+                {v.has_override_row && (v.public_business_name || v.public_category_id) && (
+                  <button
+                    type="button"
+                    disabled={busy === v.chapter}
+                    onClick={async () => {
+                      if (!confirm(`Clear public overrides on your ${v.chapter} chapter profile? You’ll be shown with your default member name and category.`)) return;
+                      setBusy(v.chapter);
+                      setActionError(null);
+                      try {
+                        await setMyVisibility(v.chapter, v.visible);
+                      } catch (e) {
+                        setActionError(e instanceof Error ? e.message : String(e));
+                      } finally {
+                        setBusy(null);
+                      }
+                    }}
+                    title="Clear director-set overrides"
+                    aria-label="Clear director-set overrides"
+                    className="rounded border border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-1.5 disabled:opacity-50"
+                  >
+                    <RotateCcw size={14} />
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
