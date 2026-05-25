@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Calendar, Plus, Pencil, Trash2, EyeOff, Eye } from 'lucide-react';
 import { useEvents, type EventInput } from '@/hooks/useEvents';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui';
 import { toLocalDateTimeInput, fromLocalDateTimeInput } from '@/lib/datetime';
 import type { ChapterName, EventKind, IntakeEvent } from '@/types';
 
@@ -39,6 +40,7 @@ const emptyForm: FormState = {
 export function EventsTab() {
   const { events, loading, error, canEdit, createEvent, updateEvent, deleteEvent, refresh } = useEvents();
   const { profile, isAdmin } = useAuth();
+  const toast = useToast();
   const [editing, setEditing] = useState<IntakeEvent | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -93,13 +95,17 @@ export function EventsTab() {
       };
       if (editing) {
         await updateEvent(editing.id, payload);
+        toast.success(`Updated "${payload.title}"`);
       } else {
         await createEvent(payload);
+        toast.success(`Created "${payload.title}"`);
       }
       setShowForm(false);
       await refresh();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setFormError(msg);
+      toast.error(`Save failed: ${msg}`);
     } finally {
       setBusy(false);
     }
@@ -109,16 +115,20 @@ export function EventsTab() {
     if (!confirm(`Delete "${ev.title}"? This cannot be undone.`)) return;
     try {
       await deleteEvent(ev.id);
+      toast.success(`Deleted "${ev.title}"`);
     } catch (e) {
-      alert(`Delete failed: ${e instanceof Error ? e.message : String(e)}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Delete failed: ${msg}`);
     }
   }
 
   async function toggleVisibility(ev: IntakeEvent) {
     try {
       await updateEvent(ev.id, { public_visible: !ev.public_visible });
+      toast.success(ev.public_visible ? `"${ev.title}" hidden from public` : `"${ev.title}" now visible to public`);
     } catch (e) {
-      alert(`Update failed: ${e instanceof Error ? e.message : String(e)}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Update failed: ${msg}`);
     }
   }
 

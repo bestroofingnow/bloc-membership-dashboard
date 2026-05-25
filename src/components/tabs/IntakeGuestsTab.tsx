@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, RefreshCw, Check } from 'lucide-react';
 import { useIntakeGuests } from '@/hooks/useIntakeGuests';
+import { useToast } from '@/components/ui';
 import type { IntakeConflictKind, IntakeRsvpStatus } from '@/types';
 
 const CONFLICT_COLORS: Record<IntakeConflictKind, string> = {
@@ -21,6 +22,7 @@ const STATUS_COLORS: Record<IntakeRsvpStatus, string> = {
 
 export function IntakeGuestsTab() {
   const { rows, loading, error, refresh, setStatus, markSyncResolved } = useIntakeGuests();
+  const toast = useToast();
   const [conflictFilter, setConflictFilter] = useState<IntakeConflictKind | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<IntakeRsvpStatus | 'all'>('all');
   const [search, setSearch] = useState('');
@@ -54,8 +56,11 @@ export function IntakeGuestsTab() {
     setActionError(null);
     try {
       await setStatus(rsvpId, status);
+      toast.success(`Status set to ${status}`);
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setActionError(msg);
+      toast.error(`Status change failed: ${msg}`);
     } finally {
       setBusyRow(null);
     }
@@ -66,8 +71,11 @@ export function IntakeGuestsTab() {
     setActionError(null);
     try {
       await markSyncResolved(rsvpId);
+      toast.success('Sync failure marked resolved');
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setActionError(msg);
+      toast.error(`Resolve failed: ${msg}`);
     } finally {
       setBusyRow(null);
     }
