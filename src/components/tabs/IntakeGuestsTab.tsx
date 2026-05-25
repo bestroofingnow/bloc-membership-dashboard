@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Check } from 'lucide-react';
 import { useIntakeGuests } from '@/hooks/useIntakeGuests';
 import type { IntakeConflictKind, IntakeRsvpStatus } from '@/types';
 
@@ -20,14 +20,49 @@ const STATUS_COLORS: Record<IntakeRsvpStatus, string> = {
 };
 
 export function IntakeGuestsTab() {
-  const { rows, loading, error, refresh } = useIntakeGuests();
+  const { rows, loading, error, refresh, setStatus, markSyncResolved } = useIntakeGuests();
   const [conflictFilter, setConflictFilter] = useState<IntakeConflictKind | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<IntakeRsvpStatus | 'all'>('all');
+  const [search, setSearch] = useState('');
+  const [busyRow, setBusyRow] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const filtered = useMemo(() => rows.filter((r) =>
-    (conflictFilter === 'all' || r.conflict_kind === conflictFilter) &&
-    (statusFilter === 'all' || r.status === statusFilter)
-  ), [rows, conflictFilter, statusFilter]);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((r) =>
+      (conflictFilter === 'all' || r.conflict_kind === conflictFilter) &&
+      (statusFilter === 'all' || r.status === statusFilter) &&
+      (q === '' ||
+        r.first_name.toLowerCase().includes(q) ||
+        r.last_name.toLowerCase().includes(q) ||
+        r.email.toLowerCase().includes(q) ||
+        r.business_name.toLowerCase().includes(q))
+    );
+  }, [rows, conflictFilter, statusFilter, search]);
+
+  async function onStatusChange(rsvpId: string, status: IntakeRsvpStatus) {
+    setBusyRow(rsvpId);
+    setActionError(null);
+    try {
+      await setStatus(rsvpId, status);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusyRow(null);
+    }
+  }
+
+  async function onResolveSync(rsvpId: string) {
+    setBusyRow(rsvpId);
+    setActionError(null);
+    try {
+      await markSyncResolved(rsvpId);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusyRow(null);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -46,7 +81,15 @@ export function IntakeGuestsTab() {
         </button>
       </div>
 
-      <div className="flex gap-3 text-sm">
+      <div className="flex gap-3 text-sm flex-wrap items-center">
+        <input
+          type="search"
+          placeholder="Search name, email, business…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="rounded border px-3 py-1 min-w-[240px]"
+          aria-label="Search guests"
+        />
         <label className="flex items-center gap-2">
           <span className="text-gray-600">Conflict:</span>
           <select
@@ -76,6 +119,12 @@ export function IntakeGuestsTab() {
           </select>
         </label>
       </div>
+
+      {actionError && (
+        <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+          Action failed: {actionError}
+        </div>
+      )}
 
       {error && (
         <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -134,13 +183,30 @@ export function IntakeGuestsTab() {
                     )}
                   </td>
                   <td className="px-3 py-2">
-                    <span className={`inline-block rounded px-2 py-0.5 text-xs ${STATUS_COLORS[r.status]}`}>
-                      {r.status}
-                    </span>
+                    <select
+                      value={r.status}
+                      disabled={busyRow === r.rsvp_id}
+                      onChange={(e) => onStatusChange(r.rsvp_id, e.target.value as IntakeRsvpStatus)}
+                      className={`rounded border px-1.5 py-0.5 text-xs ${STATUS_COLORS[r.status]} disabled:opacity-50`}
+                      aria-label={`Status for ${r.first_name} ${r.last_name}`}
+                    >
+                      <option value="registered">registered</option>
+                      <option value="attended">attended</option>
+                      <option value="no_show">no_show</option>
+                      <option value="canceled">canceled</option>
+                    </select>
                     {r.has_unresolved_side_effects && (
-                      <span title="Sync failure" className="ml-2 inline-block align-middle text-amber-600">
-                        <AlertTriangle size={14} />
-                      </span>
+                      <button
+                        type="button"
+                        disabled={busyRow === r.rsvp_id}
+                        onClick={() => onResolveSync(r.rsvp_id)}
+                        title="Mark sync failure resolved"
+                        aria-label="Mark sync failure resolved"
+                        className="ml-2 inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-xs text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                      >
+                        <AlertTriangle size={12} />
+                        <Check size={12} />
+                      </button>
                     )}
                   </td>
                   <td className="px-3 py-2 text-xs text-gray-500">

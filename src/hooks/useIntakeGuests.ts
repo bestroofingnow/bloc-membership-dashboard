@@ -131,5 +131,39 @@ export function useIntakeGuests() {
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
-  return { rows, loading, error, refresh: fetchRows };
+  const authHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, []);
+
+  const setStatus = useCallback(async (rsvpId: string, status: 'registered' | 'attended' | 'no_show' | 'canceled') => {
+    const headers = { 'content-type': 'application/json', ...(await authHeaders()) };
+    const res = await fetch(`/api/admin/intake-rsvps/${rsvpId}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error ?? `status_update_failed_${res.status}`);
+    }
+    // Optimistic local update
+    setRows((prev) => prev.map((r) => (r.rsvp_id === rsvpId ? { ...r, status } : r)));
+  }, [authHeaders]);
+
+  const markSyncResolved = useCallback(async (rsvpId: string) => {
+    const headers = await authHeaders();
+    const res = await fetch(`/api/admin/intake-side-effect/${rsvpId}/resolve`, {
+      method: 'POST',
+      headers,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error ?? `resolve_failed_${res.status}`);
+    }
+    setRows((prev) => prev.map((r) => (r.rsvp_id === rsvpId ? { ...r, has_unresolved_side_effects: false } : r)));
+  }, [authHeaders]);
+
+  return { rows, loading, error, refresh: fetchRows, setStatus, markSyncResolved };
 }
