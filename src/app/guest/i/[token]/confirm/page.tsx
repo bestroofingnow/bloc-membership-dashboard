@@ -46,7 +46,6 @@ export default async function ConfirmPage({ params, searchParams }: Props) {
         Add to calendar
       </a>
       <p className="mt-6 text-sm text-gray-600">We've emailed your confirmation with the calendar invite attached.</p>
-      <p className="mt-2 text-sm text-gray-600">Token: {token.slice(0, 8)}…</p>
     </main>
   );
 }
