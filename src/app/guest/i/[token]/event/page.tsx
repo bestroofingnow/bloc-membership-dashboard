@@ -25,21 +25,31 @@ export default async function EventPickerPage({ params }: Props) {
   if (payload.chapter) q = q.eq('chapter', payload.chapter);
   const { data: events } = await q;
 
+  const hasEvents = (events ?? []).length > 0;
+
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
       <h1 className="text-2xl font-semibold">Pick an event</h1>
-      <ul className="mt-6 space-y-4">
-        {(events ?? []).map((e) => (
-          <li key={e.id} className="rounded border p-4">
-            <Link href={`/guest/i/${token}/${payload.chapter ? 'details' : 'chapter'}?event=${e.id}`} className="block">
-              <div className="font-medium">{e.title}</div>
-              <div className="text-sm text-gray-600">{new Date(e.starts_at).toLocaleString()}</div>
-              {e.location_name && <div className="text-sm text-gray-600">{e.location_name}</div>}
-            </Link>
-          </li>
-        ))}
-        {events?.length === 0 && <li className="text-gray-600">No upcoming events.</li>}
-      </ul>
+      {hasEvents ? (
+        <ul className="mt-6 space-y-4">
+          {(events ?? []).map((e) => (
+            <li key={e.id} className="rounded border p-4">
+              <Link href={`/guest/i/${token}/${payload.chapter ? 'details' : 'chapter'}?event=${e.id}`} className="block">
+                <div className="font-medium">{e.title}</div>
+                <div className="text-sm text-gray-600">{new Date(e.starts_at).toLocaleString()}</div>
+                {e.location_name && <div className="text-sm text-gray-600">{e.location_name}</div>}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="mt-6 rounded border border-dashed p-8 text-center">
+          <p className="text-gray-700 font-medium">No upcoming events right now.</p>
+          <p className="mt-2 text-sm text-gray-600">
+            BLOC hosts monthly lunches and After Hours mixers. Check back soon, or reach out to whoever invited you for the next date.
+          </p>
+        </div>
+      )}
     </main>
   );
 }
