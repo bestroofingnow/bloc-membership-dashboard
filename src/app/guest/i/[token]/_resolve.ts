@@ -27,18 +27,9 @@ export async function resolveToken(token: string): Promise<ResolvedToken> {
   if (!row) redirect('/guest/error/bad-link');
   if (row.revoked_at) redirect('/guest/error/expired-link');
 
-  const { data: current } = await sb
-    .from('qr_tokens')
-    .select('scan_count')
-    .eq('id', row.id)
-    .single();
-  await sb
-    .from('qr_tokens')
-    .update({
-      scan_count: (current?.scan_count ?? 0) + 1,
-      last_scanned_at: new Date().toISOString(),
-    })
-    .eq('id', row.id);
+  // Atomic increment via SQL function — avoids the TOCTOU race the prior
+  // select-then-update had under concurrent scans.
+  await sb.rpc('qr_token_bump_scan', { p_qr_id: row.id });
 
   // Ensure a session row exists; cookie holds its id.
   const cookieStore = await cookies();
