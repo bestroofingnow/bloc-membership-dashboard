@@ -1,9 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, RefreshCw, Check } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Check, Download } from 'lucide-react';
 import { useIntakeGuests } from '@/hooks/useIntakeGuests';
 import { useToast } from '@/components/ui';
+import { csvRow } from '@/lib/csv';
 import type { IntakeConflictKind, IntakeRsvpStatus } from '@/types';
 
 const CONFLICT_COLORS: Record<IntakeConflictKind, string> = {
@@ -88,14 +89,51 @@ export function IntakeGuestsTab() {
           <h2 className="text-xl font-semibold">Guest Inbox</h2>
           <p className="text-sm text-gray-600">RSVPs from the public guest flow. {rows.length} total · {filtered.length} shown.</p>
         </div>
-        <button
-          onClick={refresh}
-          disabled={loading}
-          className="inline-flex items-center gap-2 rounded border bg-white px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              const header = csvRow(['Submitted', 'First name', 'Last name', 'Email', 'Business', 'Chapter', 'Event', 'Event date', 'Status', 'Conflict', 'Conflict with', 'Invited by', 'Other category text', 'Sync issue']);
+              const lines = filtered.map((r) => csvRow([
+                new Date(r.submitted_at).toISOString(),
+                r.first_name,
+                r.last_name,
+                r.email,
+                r.business_name,
+                r.chapter ?? '',
+                r.event_title,
+                new Date(r.event_starts_at).toISOString(),
+                r.status,
+                r.conflict_kind,
+                r.conflict_member_name ?? '',
+                r.invited_by_member_name ?? '',
+                r.other_category_text ?? '',
+                r.has_unresolved_side_effects ? 'yes' : 'no',
+              ]));
+              const blob = new Blob([header + '\n' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `bloc-guest-inbox-${new Date().toISOString().slice(0, 10)}.csv`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+              toast.success(`Exported ${filtered.length} guest${filtered.length === 1 ? '' : 's'} to CSV`);
+            }}
+            disabled={filtered.length === 0}
+            className="inline-flex items-center gap-1 rounded border bg-white px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Download size={14} /> Export CSV
+          </button>
+          <button
+            onClick={refresh}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded border bg-white px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-3 text-sm flex-wrap items-center">
