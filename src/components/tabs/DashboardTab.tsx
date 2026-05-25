@@ -12,10 +12,13 @@ import {
   Pencil,
   Save,
   Loader2,
+  Inbox,
+  AlertCircle,
 } from 'lucide-react';
 import { StatCard, ProgressBar, Card, CardTitle, Button, Modal, Input } from '@/components/ui';
 import { useMembers } from '@/hooks/useMembers';
 import { useGuests } from '@/hooks/useGuests';
+import { useIntakeGuests } from '@/hooks/useIntakeGuests';
 import { useDashboardSettings } from '@/hooks/useDashboardSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { upcomingEvents } from '@/data/stats';
@@ -32,8 +35,14 @@ const chapterColors: Record<ChapterName, 'blue' | 'green' | 'amber' | 'purple'> 
 export function DashboardTab() {
   const { members, chapterCounts } = useMembers();
   const { guests } = useGuests();
+  const { rows: intakeRows } = useIntakeGuests();
   const { targetMembers, chapterGoals, impactStats, updateMultiple } = useDashboardSettings();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isDirector } = useAuth();
+
+  const intakeRegistered = intakeRows.filter((r) => r.status === 'registered').length;
+  const intakeNeedsAttention = intakeRows.filter(
+    (r) => r.conflict_kind === 'other' || r.has_unresolved_side_effects,
+  ).length;
 
   const currentMembers = members.length;
   const guestsInPipeline = guests.length;
@@ -163,6 +172,26 @@ export function DashboardTab() {
           color="green"
         />
       </div>
+
+      {/* Public-flow intake activity — director/admin only */}
+      {(isAdmin || isDirector) && (
+        <div className="grid md:grid-cols-2 gap-4">
+          <StatCard
+            title="Guest RSVPs"
+            value={intakeRegistered}
+            subtitle="Registered through the public QR flow"
+            icon={Inbox}
+            color="blue"
+          />
+          <StatCard
+            title="Needs attention"
+            value={intakeNeedsAttention}
+            subtitle='"Other" categories + sync failures'
+            icon={AlertCircle}
+            color={intakeNeedsAttention > 0 ? 'amber' : 'green'}
+          />
+        </div>
+      )}
 
       {/* Chapter Progress */}
       <Card padding="lg">
