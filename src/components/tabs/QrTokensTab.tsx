@@ -1,12 +1,34 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import QRCode from 'qrcode';
 import { QrCode, Plus, X, Copy, RotateCcw, Check, Printer } from 'lucide-react';
 import { useQrTokens, type MintQrInput } from '@/hooks/useQrTokens';
 import { useEvents } from '@/hooks/useEvents';
 import { useMembers } from '@/hooks/useMembers';
 import { useAuth } from '@/contexts/AuthContext';
+import { QrImage } from '@/components/ui';
 import type { ChapterName, QrTokenKindUI, QrTokenRow } from '@/types';
+
+async function downloadQrPng(url: string, baseName: string) {
+  try {
+    const dataUrl = await QRCode.toDataURL(url, {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      width: 1200,
+      color: { dark: '#000000', light: '#FFFFFF' },
+    });
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `${baseName.replace(/[^a-z0-9._-]+/gi, '_')}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (e) {
+    alert('Failed to generate QR PNG');
+    console.error(e);
+  }
+}
 
 const KINDS: { value: QrTokenKindUI; label: string; description: string }[] = [
   { value: 'general', label: 'General', description: 'Any guest, any event' },
@@ -59,10 +81,6 @@ export function QrTokensTab() {
 
   function publicUrl(token: string): string {
     return `${origin()}/guest/i/${token}`;
-  }
-
-  function qrImageUrl(url: string, size = 220): string {
-    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}`;
   }
 
   async function copyToClipboard(text: string, id: string) {
@@ -149,7 +167,7 @@ export function QrTokensTab() {
       <div className="hidden print-qr-sheet">
         {filtered.map((t) => (
           <div key={`print-${t.id}`} className="print-qr-card">
-            <img src={qrImageUrl(publicUrl(t.token), 600)} alt={`QR for ${t.label ?? t.kind}`} />
+            <QrImage url={publicUrl(t.token)} size={600} alt={`QR for ${t.label ?? t.kind}`} />
             <div className="print-qr-label">{t.label ?? `BLOC ${t.kind}`}</div>
             <div className="print-qr-meta">
               {t.chapter ?? 'Cross-chapter'}{t.event_title ? ` · ${t.event_title}` : ''}
@@ -175,11 +193,10 @@ export function QrTokensTab() {
         <ul className="space-y-3">
           {filtered.map((t) => (
             <li key={t.id} className={`rounded border p-4 flex gap-4 items-start ${t.revoked_at ? 'opacity-60 bg-gray-50' : 'bg-white'}`}>
-              <img
-                src={qrImageUrl(publicUrl(t.token))}
+              <QrImage
+                url={publicUrl(t.token)}
+                size={120}
                 alt={`QR code for ${t.label ?? t.kind}`}
-                width={120}
-                height={120}
                 className="rounded border shrink-0"
               />
               <div className="flex-1 min-w-0">
@@ -205,14 +222,13 @@ export function QrTokensTab() {
                   >
                     {copiedId === t.id ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy URL</>}
                   </button>
-                  <a
-                    href={qrImageUrl(publicUrl(t.token), 600)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => downloadQrPng(publicUrl(t.token), t.label ?? `bloc-${t.kind}`)}
                     className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-gray-50"
                   >
-                    Open large QR
-                  </a>
+                    Download PNG
+                  </button>
                   <button
                     onClick={() => toggleRevoked(t)}
                     className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-xs ${t.revoked_at ? 'hover:bg-green-50 text-green-700 border-green-200' : 'hover:bg-red-50 text-red-700 border-red-200'}`}
