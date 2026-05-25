@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { resolveToken } from '../_resolve';
 import { getServerSupabase } from '@/lib/guest/supabase-server';
 import { GuestDetailsForm } from './GuestDetailsForm';
@@ -11,6 +12,12 @@ export default async function DetailsPage({ params, searchParams }: Props) {
   const { token } = await params;
   const sp = await searchParams;
   const { payload, qr_token_id, session_id } = await resolveToken(token);
+
+  // Chapter is required to compute conflicts. If the token didn't pin one,
+  // the guest needs to enter through a chapter-aware link.
+  if (!payload.chapter) {
+    redirect('/guest/error/bad-link');
+  }
 
   const sb = getServerSupabase();
   const [{ data: industries }, { data: categories }] = await Promise.all([
@@ -33,7 +40,7 @@ export default async function DetailsPage({ params, searchParams }: Props) {
       <GuestDetailsForm
         token={token}
         sessionId={session_id}
-        chapter={payload.chapter ?? 'Uptown'}
+        chapter={payload.chapter}
         eventId={event_id}
         invitedByMemberId={payload.invited_by_member_id ?? null}
         qrTokenId={qr_token_id}
