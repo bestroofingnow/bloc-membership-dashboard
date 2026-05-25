@@ -3,12 +3,14 @@
 import { useMemo, useState } from 'react';
 import { Sparkles, Wand2, RotateCcw, Filter } from 'lucide-react';
 import { useMemberTaxonomyAdmin } from '@/hooks/useMemberTaxonomyAdmin';
+import { useToast } from '@/components/ui';
 import type { MemberTaxonomyRow } from '@/types';
 
 type Filter = 'all' | 'unassigned' | 'with_suggestion';
 
 export function MemberTaxonomyTab() {
   const { rows, industries, categories, loading, error, stats, refresh, setMemberTaxonomy } = useMemberTaxonomyAdmin();
+  const toast = useToast();
   const [filter, setFilter] = useState<Filter>('unassigned');
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -35,9 +37,12 @@ export function MemberTaxonomyTab() {
     setActionError(null);
     try {
       await setMemberTaxonomy(r.member_id, r.suggested_industry_id, r.suggested_category_id);
+      toast.success(`Assigned ${r.name} → ${r.suggested_industry_name}${r.suggested_category_title ? ` / ${r.suggested_category_title}` : ''}`);
       await refresh();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setActionError(msg);
+      toast.error(`Failed: ${msg}`);
     } finally {
       setBusyId(null);
     }
@@ -49,9 +54,12 @@ export function MemberTaxonomyTab() {
     setActionError(null);
     try {
       await setMemberTaxonomy(r.member_id, null, null);
+      toast.success(`Cleared ${r.name}`);
       await refresh();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setActionError(msg);
+      toast.error(`Failed: ${msg}`);
     } finally {
       setBusyId(null);
     }
@@ -68,9 +76,12 @@ export function MemberTaxonomyTab() {
         if (cat) resolvedIndustry = cat.category_id;
       }
       await setMemberTaxonomy(r.member_id, resolvedIndustry, category_id);
+      toast.success(`Updated ${r.name}`);
       await refresh();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setActionError(msg);
+      toast.error(`Failed: ${msg}`);
     } finally {
       setBusyId(null);
     }
@@ -95,6 +106,11 @@ export function MemberTaxonomyTab() {
     await refresh();
     setBulkBusy(false);
     setBulkResult(`Applied ${success}${failed > 0 ? ` (${failed} failed)` : ''}.`);
+    if (failed === 0) {
+      toast.success(`Applied ${success} suggestion${success === 1 ? '' : 's'}`);
+    } else {
+      toast.error(`Applied ${success} · ${failed} failed`);
+    }
   }
 
   return (
