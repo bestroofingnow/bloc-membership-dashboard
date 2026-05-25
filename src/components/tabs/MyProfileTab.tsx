@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { User, Eye, EyeOff, AlertCircle, RotateCcw } from 'lucide-react';
 import { useMyMember } from '@/hooks/useMyMember';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui';
 import type { ChapterName } from '@/types';
 
 export function MyProfileTab() {
@@ -11,14 +12,18 @@ export function MyProfileTab() {
   const { member, visibilities, loading, error, setMyVisibility, refresh } = useMyMember();
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const toast = useToast();
 
   async function toggle(chapter: ChapterName, next: boolean) {
     setBusy(chapter);
     setActionError(null);
     try {
       await setMyVisibility(chapter, next);
+      toast.success(next ? 'You are now visible on the public roster' : 'You are now hidden from the public roster');
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setActionError(msg);
+      toast.error(`Update failed: ${msg}`);
     } finally {
       setBusy(null);
     }
@@ -125,8 +130,11 @@ export function MyProfileTab() {
                       setActionError(null);
                       try {
                         await setMyVisibility(v.chapter, v.visible);
+                        toast.success('Overrides cleared');
                       } catch (e) {
-                        setActionError(e instanceof Error ? e.message : String(e));
+                        const msg = e instanceof Error ? e.message : String(e);
+                        setActionError(msg);
+                        toast.error(`Clear failed: ${msg}`);
                       } finally {
                         setBusy(null);
                       }

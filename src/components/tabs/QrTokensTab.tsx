@@ -7,10 +7,10 @@ import { useQrTokens, type MintQrInput } from '@/hooks/useQrTokens';
 import { useEvents } from '@/hooks/useEvents';
 import { useMembers } from '@/hooks/useMembers';
 import { useAuth } from '@/contexts/AuthContext';
-import { QrImage } from '@/components/ui';
+import { QrImage, useToast } from '@/components/ui';
 import type { ChapterName, QrTokenKindUI, QrTokenRow } from '@/types';
 
-async function downloadQrPng(url: string, baseName: string) {
+async function downloadQrPng(url: string, baseName: string): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     const dataUrl = await QRCode.toDataURL(url, {
       errorCorrectionLevel: 'M',
@@ -24,9 +24,10 @@ async function downloadQrPng(url: string, baseName: string) {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    return { ok: true };
   } catch (e) {
-    alert('Failed to generate QR PNG');
     console.error(e);
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
 
@@ -44,6 +45,7 @@ export function QrTokensTab() {
   const { events } = useEvents();
   const { members } = useMembers();
   const { profile, isAdmin } = useAuth();
+  const toast = useToast();
 
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -88,8 +90,9 @@ export function QrTokensTab() {
       await navigator.clipboard.writeText(text);
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 1500);
+      toast.info('URL copied to clipboard');
     } catch {
-      // ignore
+      toast.error('Couldn\'t copy to clipboard — long-press to select the URL instead.');
     }
   }
 
@@ -114,10 +117,13 @@ export function QrTokensTab() {
     setFormError(null);
     try {
       await mint(form);
+      toast.success(`Minted new ${form.kind} QR${form.label ? `: ${form.label}` : ''}`);
       setShowForm(false);
       await refresh();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setFormError(msg);
+      toast.error(`Mint failed: ${msg}`);
     } finally {
       setBusy(false);
     }
@@ -128,8 +134,9 @@ export function QrTokensTab() {
     if (!confirm(`Are you sure you want to ${verb} "${t.label ?? t.token.slice(0, 12)}"?`)) return;
     try {
       await setRevoked(t.id, !t.revoked_at);
+      toast.success(`${verb === 'revoke' ? 'Revoked' : 'Restored'} QR code`);
     } catch (e) {
-      alert(`Failed: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(`Failed: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -224,7 +231,11 @@ export function QrTokensTab() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => downloadQrPng(publicUrl(t.token), t.label ?? `bloc-${t.kind}`)}
+                    onClick={async () => {
+                      const r = await downloadQrPng(publicUrl(t.token), t.label ?? `bloc-${t.kind}`);
+                      if (r.ok) toast.success('PNG downloaded');
+                      else toast.error(`Failed: ${r.error}`);
+                    }}
                     className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-gray-50"
                   >
                     Download PNG

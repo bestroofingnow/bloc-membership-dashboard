@@ -5,6 +5,7 @@ import { Eye, EyeOff, Users2, RotateCcw, Save, X } from 'lucide-react';
 import { useChapterRoster } from '@/hooks/useChapterRoster';
 import { useTargets } from '@/hooks/useTargets';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui';
 import type { ChapterName, RosterMember } from '@/types';
 
 const CHAPTERS: ChapterName[] = ['North', 'South', 'Uptown', 'FLOC', 'Alumni'];
@@ -19,6 +20,7 @@ export function RosterTab() {
 
   const { roster, loading, error, upsertVisibility, clearOverride, refresh } = useChapterRoster(chapter);
   const targets = useTargets();
+  const toast = useToast();
   const [search, setSearch] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -57,8 +59,9 @@ export function RosterTab() {
         public_business_name: m.public_business_name,
         public_category_id: m.public_category_id,
       });
+      toast.success(`${m.member_name} ${next ? 'shown' : 'hidden'} on public roster`);
     } catch (e) {
-      alert(`Failed: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(`Failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(null);
     }
@@ -70,8 +73,9 @@ export function RosterTab() {
     setBusy(m.member_id);
     try {
       await clearOverride(m.member_id, chapter);
+      toast.success(`${m.member_name} reset to default`);
     } catch (e) {
-      alert(`Failed: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(`Failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(null);
     }
@@ -204,9 +208,10 @@ export function RosterTab() {
                           public_business_name: overrides.business_name,
                           public_category_id: overrides.category_id,
                         });
+                        toast.success(`Saved overrides for ${m.member_name}`);
                         setEditingId(null);
                       } catch (e) {
-                        alert(`Failed: ${e instanceof Error ? e.message : String(e)}`);
+                        toast.error(`Failed: ${e instanceof Error ? e.message : String(e)}`);
                       } finally {
                         setBusy(null);
                       }
