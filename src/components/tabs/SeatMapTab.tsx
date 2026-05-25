@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Grid3x3, Download, AlertTriangle } from 'lucide-react';
 import { useSeatMap } from '@/hooks/useSeatMap';
 import { useAuth } from '@/contexts/AuthContext';
+import { csvField, csvRow } from '@/lib/csv';
 import type { ChapterName } from '@/types';
 
 const CHAPTERS: ChapterName[] = ['North', 'South', 'Uptown', 'FLOC', 'Alumni'];
@@ -41,13 +42,13 @@ export function SeatMapTab() {
   }, [seats, filter, search]);
 
   function exportCsv() {
-    const header = ['Industry', 'Category', 'Status', 'Holders'].join(',');
-    const lines = filtered.map((s) => [
-      csv(s.industry_name),
-      csv(s.category_title),
-      csv(s.status),
-      csv(s.occupants.map((o) => `${o.member_name} (${o.member_company})`).join('; ')),
-    ].join(','));
+    const header = csvRow(['Industry', 'Category', 'Status', 'Holders']);
+    const lines = filtered.map((s) => csvRow([
+      s.industry_name,
+      s.category_title,
+      s.status,
+      s.occupants.map((o) => `${o.member_name} (${o.member_company})`).join('; '),
+    ]));
     const blob = new Blob([header + '\n' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -192,10 +193,6 @@ function Stat(props: { label: string; value: number; tone?: 'ok' | 'warn' | 'inf
   );
 }
 
-function csv(value: string): string {
-  // RFC 4180-ish: wrap in quotes if value contains comma, quote, or newline; escape quotes by doubling.
-  if (/[",\n\r]/.test(value)) {
-    return '"' + value.replace(/"/g, '""') + '"';
-  }
-  return value;
-}
+// csv helpers extracted to src/lib/csv.ts (csvField, csvRow) and tested there.
+const _csvHelpersHere = csvField;
+void _csvHelpersHere;

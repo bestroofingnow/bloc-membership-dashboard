@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Calendar, Plus, Pencil, Trash2, EyeOff, Eye } from 'lucide-react';
 import { useEvents, type EventInput } from '@/hooks/useEvents';
 import { useAuth } from '@/contexts/AuthContext';
+import { toLocalDateTimeInput, fromLocalDateTimeInput } from '@/lib/datetime';
 import type { ChapterName, EventKind, IntakeEvent } from '@/types';
 
 const CHAPTERS: (ChapterName | '')[] = ['', 'North', 'South', 'Uptown', 'FLOC', 'Alumni'];
@@ -33,17 +34,7 @@ const emptyForm: FormState = {
   public_visible: true,
 };
 
-function toLocalDateTimeInput(iso: string): string {
-  // Convert ISO timestamptz string to <input type="datetime-local"> format
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function fromLocalDateTimeInput(local: string): string {
-  // Local datetime → ISO with offset
-  return new Date(local).toISOString();
-}
+// toLocalDateTimeInput / fromLocalDateTimeInput live in src/lib/datetime.ts (tested there).
 
 export function EventsTab() {
   const { events, loading, error, canEdit, createEvent, updateEvent, deleteEvent, refresh } = useEvents();

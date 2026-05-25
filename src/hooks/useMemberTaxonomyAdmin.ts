@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { suggestTaxonomy } from '@/lib/taxonomy/suggest';
 import type { ChapterName, MemberTaxonomyRow } from '@/types';
 
 interface MemberRow {
@@ -17,13 +18,6 @@ interface MemberRow {
 
 interface IndustryRow { id: string; name: string }
 interface CategoryRow { id: string; category_id: string; title: string }
-
-/**
- * Loose normalize for fuzzy matching legacy industry text against taxonomy.
- */
-function norm(s: string | null | undefined): string {
-  return (s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-}
 
 export function useMemberTaxonomyAdmin() {
   const { session, isAdmin } = useAuth();
@@ -60,8 +54,6 @@ export function useMemberTaxonomyAdmin() {
       setIndustries(indRows);
       setCategories(catRows);
 
-      const indByName = new Map<string, IndustryRow>();
-      for (const i of indRows) indByName.set(norm(i.name), i);
       const indById = new Map<string, IndustryRow>();
       for (const i of indRows) indById.set(i.id, i);
       const catById = new Map<string, CategoryRow>();
@@ -69,30 +61,9 @@ export function useMemberTaxonomyAdmin() {
 
       const result: MemberTaxonomyRow[] = memberRows.map((m) => {
         const legacy = m.industry ?? null;
-        // Suggestion: exact normalized match between legacy industry text and either industry name or category title.
-        // Industry match wins; if not, try category title.
-        let suggestIndustry: IndustryRow | null = null;
-        let suggestCategory: CategoryRow | null = null;
-        if (legacy && !m.industry_id) {
-          const k = norm(legacy);
-          const directIndustry = indByName.get(k);
-          if (directIndustry) {
-            suggestIndustry = directIndustry;
-          } else {
-            // Try category title match
-            const directCategory = catRows.find((c) => norm(c.title) === k);
-            if (directCategory) {
-              suggestCategory = directCategory;
-              suggestIndustry = indById.get(directCategory.category_id) ?? null;
-            } else {
-              // Substring fuzzy match: any industry whose name is contained in legacy or vice versa
-              const subIndustry = indRows.find((i) => norm(i.name) && (norm(i.name).includes(k) || k.includes(norm(i.name))));
-              if (subIndustry) {
-                suggestIndustry = subIndustry;
-              }
-            }
-          }
-        }
+        const suggestion = !m.industry_id
+          ? suggestTaxonomy(legacy, indRows, catRows)
+          : { industry_id: null, industry_name: null, category_id: null, category_title: null };
         const currInd = m.industry_id ? indById.get(m.industry_id) ?? null : null;
         const currCat = m.category_id ? catById.get(m.category_id) ?? null : null;
 
@@ -106,10 +77,10 @@ export function useMemberTaxonomyAdmin() {
           current_industry_name: currInd?.name ?? null,
           current_category_id: m.category_id,
           current_category_title: currCat?.title ?? null,
-          suggested_industry_id: suggestIndustry?.id ?? null,
-          suggested_industry_name: suggestIndustry?.name ?? null,
-          suggested_category_id: suggestCategory?.id ?? null,
-          suggested_category_title: suggestCategory?.title ?? null,
+          suggested_industry_id: suggestion.industry_id,
+          suggested_industry_name: suggestion.industry_name,
+          suggested_category_id: suggestion.category_id,
+          suggested_category_title: suggestion.category_title,
         };
       });
       setRows(result);
