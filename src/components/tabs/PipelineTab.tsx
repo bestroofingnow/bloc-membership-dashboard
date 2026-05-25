@@ -312,6 +312,12 @@ export function PipelineTab() {
           <p className="text-sm text-slate-500">
             Track prospects from first contact to membership approval
           </p>
+          {canEdit && (
+            <p className="text-xs text-slate-500 mt-1">
+              Looking for guests who RSVP&apos;d through the public QR flow?
+              See the <strong>Guest Inbox</strong> tab.
+            </p>
+          )}
         </div>
 {canEdit && (
           <Button onClick={() => setAddModalOpen(true)}>
