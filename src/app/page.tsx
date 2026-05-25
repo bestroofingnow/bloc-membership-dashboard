@@ -410,13 +410,22 @@ function DashboardContent() {
                 Building friendships, growing business, and strengthening our community.
               </p>
             </div>
-            <div className="flex items-center gap-4 text-sm text-slate-500">
+            <div className="flex items-center gap-4 text-sm text-slate-500 flex-wrap justify-center">
               <a
                 href="mailto:admin@businessleadersofcharlotte.com"
                 className="hover:text-bloc-blue transition-colors"
               >
                 Contact Admin
               </a>
+              <span className="text-slate-300">|</span>
+              <button
+                type="button"
+                onClick={() => { setPaletteQuery(''); setPaletteIndex(0); setPaletteOpen(true); }}
+                className="hover:text-bloc-blue transition-colors"
+                title="Quick jump (⌘K)"
+              >
+                Jump to tab
+              </button>
               <span className="text-slate-300">|</span>
               <a
                 href="https://businessleadersofcharlotte.com"
