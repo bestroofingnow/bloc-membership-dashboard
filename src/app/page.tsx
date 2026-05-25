@@ -199,6 +199,15 @@ function DashboardContent() {
 
             {/* User Info & External Link */}
             <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => { setPaletteQuery(''); setPaletteIndex(0); setPaletteOpen(true); }}
+                className="hidden md:flex items-center gap-2 text-xs text-blue-200 hover:text-white px-2 py-1 rounded-lg border border-white/20 hover:bg-white/10"
+                title="Jump to any tab"
+              >
+                <span>Quick jump</span>
+                <kbd className="px-1.5 py-0.5 rounded bg-white/10 border border-white/20">⌘K</kbd>
+              </button>
               <a
                 href="https://businessleadersofcharlotte.com"
                 target="_blank"
