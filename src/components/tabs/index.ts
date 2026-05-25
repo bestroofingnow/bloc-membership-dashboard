@@ -8,3 +8,4 @@ export { AdminTab } from './AdminTab';
 export { ScannerTab } from './ScannerTab';
 export { IntakeGuestsTab } from './IntakeGuestsTab';
 export { EventsTab } from './EventsTab';
+export { QrTokensTab } from './QrTokensTab';

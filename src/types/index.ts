@@ -112,7 +112,25 @@ export interface DashboardStats {
 }
 
 // Tab configuration
-export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'intake' | 'events' | 'admin';
+export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'intake' | 'events' | 'qr' | 'admin';
+
+export type QrTokenKindUI = 'general' | 'chapter' | 'event' | 'member_invite' | 'after_hours';
+
+export interface QrTokenRow {
+  id: string;
+  token: string;
+  kind: QrTokenKindUI;
+  chapter: ChapterName | null;
+  event_id: string | null;
+  event_title: string | null;
+  invited_by_member_id: string | null;
+  invited_by_member_name: string | null;
+  label: string | null;
+  scan_count: number;
+  last_scanned_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+}
 
 export type EventKind = 'lunch' | 'after_hours' | 'special';
 
