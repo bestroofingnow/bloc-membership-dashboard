@@ -18,6 +18,16 @@ A multi-user membership management platform for **Business Leaders of Charlotte 
 - **Admin Panel**: User management, role assignment, and WA sync controls
 - **Real-time Updates**: All changes sync instantly via Supabase Realtime
 
+### Public Guest Intake Flow (sub-project A)
+
+- **QR-driven public flow** at `/guest/i/<token>` with signed JWT tokens
+- **Live category-conflict check** with soft-warn (never blocks)
+- **Anonymous + magic-link** identity for return RSVPs
+- **GoHighLevel + Resend** integration with non-blocking side-effect retry
+- **Dashboard tabs for directors/admins**: Guest Inbox, Events, QR Codes, Roster Manager
+- **Member self-service**: My Profile tab lets members opt themselves in/out of the public roster
+- **Print-friendly QR sheets** for distributing physical codes at chapter events
+
 ## Tech Stack
 
 - **Framework**: Next.js 16 (App Router)
@@ -63,10 +73,12 @@ Without Supabase environment variables, the app runs in **demo mode** with stati
 
 | Guide | Description |
 |---|---|
+| [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md) | End-to-end Vercel + Supabase + Resend + GHL setup |
 | [Supabase Setup](docs/SUPABASE_SETUP.md) | Database, auth, and realtime configuration |
 | [Deployment](docs/DEPLOYMENT.md) | Deploy to Vercel with custom domain |
 | [Wild Apricot](docs/WILDAPRICOT_SETUP.md) | Two-way member/event sync with Wild Apricot |
 | [Email Intake](docs/EMAIL_INTAKE_SETUP.md) | Auto-create leads from inbound emails |
+| [Guest Flow Spec](docs/superpowers/specs/2026-05-08-public-guest-intake-flow-design.md) | Design spec for the public QR flow |
 
 ## Project Structure
 
@@ -117,13 +129,15 @@ docs/                          # Setup and deployment guides
 
 ## User Roles
 
-| Role | Can View | Can Edit | Can Admin |
-|---|---|---|---|
-| Member | All tabs | No | No |
-| Chapter Director | All tabs | Pipeline, targets | No |
-| Admin | All tabs + Admin | Everything | Users, WA sync |
+| Role | Tabs available |
+|---|---|
+| **Member** | Dashboard, Leadership, Members, Most Wanted, Pipeline (read), Card Scanner, Membership Guide, **My Profile** (own roster opt-out) |
+| **Chapter Director** | All Member tabs + **Guest Inbox**, **Events**, **QR Codes**, **Roster** (scoped to own chapter) |
+| **Admin** | Same as Director + **Admin** panel; all chapters in scope |
 
 New sign-ups get **Member** (view-only) access. Admins promote them via the Admin tab.
+
+The dashboard surface is responsive to role: members never see director-only tabs, directors only see their own chapter's data in the intake/roster/QR views.
 
 ## BLOC Information
 
