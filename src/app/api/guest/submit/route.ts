@@ -194,15 +194,28 @@ export async function POST(req: Request) {
     if (logErr) console.error('intake_conflict_log insert', logErr);
   }
 
-  // 6) Magic link (only mint a fresh one — store hash on guest)
-  const magic = mintMagic({ ttlDays: 30 });
-  await sb
+  // 6) Magic link — preserve the existing one if it's still valid, so prior
+  // confirmation emails keep working. Only mint fresh when missing or expired.
+  const { data: existingMagic } = await sb
     .from('intake_guests')
-    .update({
-      magic_token_hash: magic.hash,
-      magic_expires_at: magic.expires_at.toISOString(),
-    })
-    .eq('id', guest.id);
+    .select('magic_token_hash,magic_expires_at')
+    .eq('id', guest.id)
+    .single();
+  const magicStillValid = !!(
+    existingMagic?.magic_token_hash &&
+    existingMagic?.magic_expires_at &&
+    new Date(existingMagic.magic_expires_at) > new Date()
+  );
+  const magic = magicStillValid ? null : mintMagic({ ttlDays: 30 });
+  if (magic) {
+    await sb
+      .from('intake_guests')
+      .update({
+        magic_token_hash: magic.hash,
+        magic_expires_at: magic.expires_at.toISOString(),
+      })
+      .eq('id', guest.id);
+  }
 
   // 7) Clean up the wizard session — the authoritative session id comes from the
   // gsid cookie (set by resolveToken), NOT the body. Body session_id is ignored.
@@ -246,6 +259,10 @@ export async function POST(req: Request) {
       ends_at: new Date(event.ends_at),
     });
     const origin = req.headers.get('origin') ?? `https://${req.headers.get('host')}`;
+    // If we re-used the existing magic (still valid from a prior submit), don't
+    // include the raw token here — point at /guest/me which will prompt them to
+    // request a fresh link via /api/guest/magic/refresh if they need one.
+    const magic_link = magic ? `${origin}/guest/me?t=${magic.token}` : `${origin}/guest/me`;
     await email.sendConfirmation({
       to: p.email,
       guest_first_name: p.first_name,
@@ -253,7 +270,7 @@ export async function POST(req: Request) {
       event_starts_at: new Date(event.starts_at),
       event_location: event.location_name ?? event.location_address ?? '',
       ics_attachment: ics,
-      magic_link: `${origin}/guest/me?t=${magic.token}`,
+      magic_link,
     });
   } catch (e) {
     await sb.from('intake_side_effect_failures').insert({
@@ -264,10 +281,13 @@ export async function POST(req: Request) {
   }
 
   const res = NextResponse.json({ rsvp_id: rsvpId, conflict_kind: cf.kind });
+  // secure when running over HTTPS — works in both prod and staging behind a TLS proxy
+  const isHttps = (req.headers.get('x-forwarded-proto') ?? 'http').toLowerCase().includes('https')
+    || process.env.NODE_ENV === 'production';
   res.cookies.set('intake_recent_rsvp', rsvpId, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: isHttps,
     path: '/',
     maxAge: 30 * 60, // 30 minutes
   });
