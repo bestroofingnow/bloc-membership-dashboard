@@ -112,7 +112,24 @@ export interface DashboardStats {
 }
 
 // Tab configuration
-export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'intake' | 'admin';
+export type TabId = 'dashboard' | 'leadership' | 'members' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'intake' | 'events' | 'admin';
+
+export type EventKind = 'lunch' | 'after_hours' | 'special';
+
+export interface IntakeEvent {
+  id: string;
+  chapter: ChapterName | null;
+  kind: EventKind;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string;
+  location_name: string | null;
+  location_address: string | null;
+  ics_uid: string;
+  public_visible: boolean;
+  created_at: string;
+}
 
 export interface Tab {
   id: TabId;

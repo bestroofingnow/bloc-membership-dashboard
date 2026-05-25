@@ -25,8 +25,9 @@ import {
   AdminTab,
   ScannerTab,
   IntakeGuestsTab,
+  EventsTab,
 } from '@/components/tabs';
-import { Inbox } from 'lucide-react';
+import { Inbox, CalendarDays } from 'lucide-react';
 import { AuthGuard } from '@/components/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { TabId } from '@/types';
@@ -98,9 +99,9 @@ function DashboardContent() {
 
   const tabs = useMemo(() => {
     const allTabs = [...baseTabs];
-    // Guest Inbox is for directors and admins only — members don't need it.
+    // Guest Inbox + Events are for directors and admins only — members don't need them.
     if (isAdmin || isDirector) {
-      // Insert after Pipeline so the two related tabs sit together.
+      // Insert after Pipeline so the related tabs sit together.
       const pipelineIdx = allTabs.findIndex((t) => t.id === 'pipeline');
       const insertAt = pipelineIdx >= 0 ? pipelineIdx + 1 : allTabs.length;
       allTabs.splice(insertAt, 0, {
@@ -108,6 +109,11 @@ function DashboardContent() {
         label: 'Guest Inbox',
         icon: <Inbox size={18} />,
         component: <IntakeGuestsTab />,
+      }, {
+        id: 'events',
+        label: 'Events',
+        icon: <CalendarDays size={18} />,
+        component: <EventsTab />,
       });
     }
     if (isAdmin) {
