@@ -37,56 +37,31 @@ import { AuthGuard } from '@/components/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { TabId } from '@/types';
 
+type TabGroup = 'core' | 'guestflow' | 'personal' | 'admin';
+
 interface TabConfig {
   id: TabId;
   label: string;
   icon: React.ReactNode;
   component: React.ReactNode;
+  group: TabGroup;
 }
 
+const GROUP_LABEL: Record<TabGroup, string> = {
+  core: 'Membership',
+  guestflow: 'Guest Flow',
+  personal: 'You',
+  admin: 'Admin',
+};
+
 const baseTabs: TabConfig[] = [
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: <LayoutDashboard size={18} />,
-    component: <DashboardTab />,
-  },
-  {
-    id: 'leadership',
-    label: 'Leadership',
-    icon: <Users size={18} />,
-    component: <LeadershipTab />,
-  },
-  {
-    id: 'members',
-    label: 'Members',
-    icon: <Search size={18} />,
-    component: <MembersTab />,
-  },
-  {
-    id: 'targets',
-    label: 'Most Wanted',
-    icon: <Target size={18} />,
-    component: <TargetsTab />,
-  },
-  {
-    id: 'pipeline',
-    label: 'Guest Pipeline',
-    icon: <UserPlus size={18} />,
-    component: <PipelineTab />,
-  },
-  {
-    id: 'scanner',
-    label: 'Card Scanner',
-    icon: <CreditCard size={18} />,
-    component: <ScannerTab />,
-  },
-  {
-    id: 'guide',
-    label: 'Membership Guide',
-    icon: <BookOpen size={18} />,
-    component: <MembershipGuideTab />,
-  },
+  { id: 'dashboard', label: 'Dashboard',         icon: <LayoutDashboard size={18} />, component: <DashboardTab />,        group: 'core' },
+  { id: 'leadership', label: 'Leadership',       icon: <Users size={18} />,           component: <LeadershipTab />,       group: 'core' },
+  { id: 'members', label: 'Members',             icon: <Search size={18} />,          component: <MembersTab />,          group: 'core' },
+  { id: 'targets', label: 'Most Wanted',         icon: <Target size={18} />,          component: <TargetsTab />,          group: 'core' },
+  { id: 'pipeline', label: 'Guest Pipeline',     icon: <UserPlus size={18} />,        component: <PipelineTab />,         group: 'core' },
+  { id: 'scanner', label: 'Card Scanner',        icon: <CreditCard size={18} />,      component: <ScannerTab />,          group: 'core' },
+  { id: 'guide', label: 'Membership Guide',      icon: <BookOpen size={18} />,        component: <MembershipGuideTab />,  group: 'core' },
 ];
 
 function DashboardContent() {
@@ -103,61 +78,40 @@ function DashboardContent() {
         : 'Member';
 
   const tabs = useMemo(() => {
-    const allTabs = [...baseTabs];
-    // My Profile is for every authenticated user — appears for Members too.
-    allTabs.push({
-      id: 'me',
-      label: 'My Profile',
-      icon: <UserCircle size={18} />,
-      component: <MyProfileTab />,
-    });
-    // Guest Inbox + Events are for directors and admins only — members don't need them.
+    // Build the role-appropriate set of tabs, each tagged with a `group` so the
+    // nav can render them in clear visual sections.
+    const all: TabConfig[] = [...baseTabs];
     if (isAdmin || isDirector) {
-      // Insert after Pipeline so the related tabs sit together.
-      const pipelineIdx = allTabs.findIndex((t) => t.id === 'pipeline');
-      const insertAt = pipelineIdx >= 0 ? pipelineIdx + 1 : allTabs.length;
-      allTabs.splice(insertAt, 0, {
-        id: 'intake',
-        label: 'Guest Inbox',
-        icon: <Inbox size={18} />,
-        component: <IntakeGuestsTab />,
-      }, {
-        id: 'events',
-        label: 'Events',
-        icon: <CalendarDays size={18} />,
-        component: <EventsTab />,
-      }, {
-        id: 'qr',
-        label: 'QR Codes',
-        icon: <QrCode size={18} />,
-        component: <QrTokensTab />,
-      }, {
-        id: 'roster',
-        label: 'Roster',
-        icon: <Users2 size={18} />,
-        component: <RosterTab />,
-      }, {
-        id: 'seats',
-        label: 'Category Seats',
-        icon: <Grid3x3 size={18} />,
-        component: <SeatMapTab />,
-      });
+      all.push(
+        { id: 'intake', label: 'Guest Inbox',     icon: <Inbox size={18} />,       component: <IntakeGuestsTab />, group: 'guestflow' },
+        { id: 'events', label: 'Events',          icon: <CalendarDays size={18} />, component: <EventsTab />,       group: 'guestflow' },
+        { id: 'qr', label: 'QR Codes',            icon: <QrCode size={18} />,      component: <QrTokensTab />,     group: 'guestflow' },
+        { id: 'roster', label: 'Roster',          icon: <Users2 size={18} />,      component: <RosterTab />,       group: 'guestflow' },
+        { id: 'seats', label: 'Category Seats',   icon: <Grid3x3 size={18} />,     component: <SeatMapTab />,      group: 'guestflow' },
+      );
     }
+    all.push({ id: 'me', label: 'My Profile', icon: <UserCircle size={18} />, component: <MyProfileTab />, group: 'personal' });
     if (isAdmin) {
-      allTabs.push({
-        id: 'taxonomy',
-        label: 'Member Taxonomy',
-        icon: <Sparkles size={18} />,
-        component: <MemberTaxonomyTab />,
-      }, {
-        id: 'admin',
-        label: 'Admin',
-        icon: <Shield size={18} />,
-        component: <AdminTab />,
-      });
+      all.push(
+        { id: 'taxonomy', label: 'Member Taxonomy', icon: <Sparkles size={18} />, component: <MemberTaxonomyTab />, group: 'admin' },
+        { id: 'admin', label: 'Admin',              icon: <Shield size={18} />,   component: <AdminTab />,           group: 'admin' },
+      );
     }
-    return allTabs;
+    // Stable group order: core → guestflow → personal → admin
+    const order: TabGroup[] = ['core', 'guestflow', 'personal', 'admin'];
+    return all.sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
   }, [isAdmin, isDirector]);
+
+  // Index of where each group starts in the tabs array (for separator render)
+  const groupBoundaries = useMemo(() => {
+    const boundaries = new Set<number>();
+    let lastGroup: TabGroup | null = null;
+    tabs.forEach((t, i) => {
+      if (lastGroup !== null && t.group !== lastGroup) boundaries.add(i);
+      lastGroup = t.group;
+    });
+    return boundaries;
+  }, [tabs]);
 
   const currentTab = tabs.find((t) => t.id === activeTab);
 
@@ -223,20 +177,25 @@ function DashboardContent() {
         {/* Navigation - Desktop */}
         <nav className="hidden sm:block border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex -mb-px">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 lg:px-6 py-4 border-b-2 transition-all font-medium text-sm ${
-                    activeTab === tab.id
-                      ? 'border-white text-white bg-white/10'
-                      : 'border-transparent text-blue-200 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  {tab.icon}
-                  <span>{tab.label}</span>
-                </button>
+            <div className="flex -mb-px overflow-x-auto">
+              {tabs.map((tab, i) => (
+                <div key={tab.id} className="flex items-center">
+                  {groupBoundaries.has(i) && (
+                    <span aria-hidden="true" className="mx-1 h-6 w-px bg-white/20 self-center" />
+                  )}
+                  <button
+                    onClick={() => setActiveTab(tab.id)}
+                    title={`${GROUP_LABEL[tab.group]} · ${tab.label}`}
+                    className={`flex items-center gap-2 px-3 lg:px-4 py-4 border-b-2 transition-all font-medium text-sm whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? 'border-white text-white bg-white/10'
+                        : 'border-transparent text-blue-200 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {tab.icon}
+                    <span>{tab.label}</span>
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -246,22 +205,33 @@ function DashboardContent() {
         {mobileMenuOpen && (
           <nav className="sm:hidden border-t border-white/10 bg-bloc-navy/95 backdrop-blur-sm">
             <div className="px-4 py-2 space-y-1">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium ${
-                    activeTab === tab.id
-                      ? 'bg-white/10 text-white'
-                      : 'text-blue-200 hover:bg-white/5 hover:text-white'
-                  }`}
-                >
-                  {tab.icon}
-                  <span>{tab.label}</span>
-                </button>
+              {tabs.map((tab, i) => (
+                <div key={tab.id}>
+                  {groupBoundaries.has(i) && (
+                    <div className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest text-blue-300/70">
+                      {GROUP_LABEL[tab.group]}
+                    </div>
+                  )}
+                  {i === 0 && (
+                    <div className="px-4 pt-1 pb-1 text-[10px] uppercase tracking-widest text-blue-300/70">
+                      {GROUP_LABEL[tab.group]}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium ${
+                      activeTab === tab.id
+                        ? 'bg-white/10 text-white'
+                        : 'text-blue-200 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    {tab.icon}
+                    <span>{tab.label}</span>
+                  </button>
+                </div>
               ))}
               <div className="pt-3 pb-2 border-t border-white/10 mt-3">
                 {isConfigured && (
