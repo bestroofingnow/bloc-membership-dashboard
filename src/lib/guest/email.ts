@@ -8,8 +8,15 @@ export interface EmailConfirmationInput {
   magic_link: string;
 }
 
+export interface EmailMagicLinkInput {
+  to: string;
+  guest_first_name: string;
+  magic_link: string;
+}
+
 export interface EmailClient {
   sendConfirmation(input: EmailConfirmationInput): Promise<{ message_id: string }>;
+  sendMagicLink(input: EmailMagicLinkInput): Promise<{ message_id: string }>;
 }
 
 class ResendEmailClient implements EmailClient {
@@ -49,11 +56,40 @@ class ResendEmailClient implements EmailClient {
     const body = await res.json();
     return { message_id: body.id };
   }
+
+  async sendMagicLink(input: EmailMagicLinkInput): Promise<{ message_id: string }> {
+    const html = `
+      <p>Hi ${escapeHtml(input.guest_first_name)},</p>
+      <p><a href="${input.magic_link}">Click here to access your BLOC RSVPs</a>.</p>
+      <p>— BLOC</p>
+    `;
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: this.from,
+        to: input.to,
+        subject: 'Your BLOC link',
+        html,
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(`Resend send failed: ${res.status} ${await res.text()}`);
+    }
+    const body = await res.json();
+    return { message_id: body.id };
+  }
 }
 
 class MockEmailClient implements EmailClient {
   async sendConfirmation(input: EmailConfirmationInput): Promise<{ message_id: string }> {
     return { message_id: `mock-${input.to}` };
+  }
+  async sendMagicLink(input: EmailMagicLinkInput): Promise<{ message_id: string }> {
+    return { message_id: `mock-magic-${input.to}` };
   }
 }
 

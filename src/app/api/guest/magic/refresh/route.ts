@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerSupabase } from '@/lib/guest/supabase-server';
+import { getEmailClient } from '@/lib/guest/email';
 import { mintMagic } from '@/lib/guest/magic';
 import { ipFromHeaders, rateLimit } from '@/lib/guest/rate-limit';
 
@@ -34,20 +35,11 @@ export async function POST(req: Request) {
 
   try {
     const origin = req.headers.get('origin') ?? `https://${req.headers.get('host')}`;
-    // Reuse the confirmation template; send a stripped version with no event.
-    // For MVP, send a minimal email via fetch directly; a dedicated template can come later.
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY ?? ''}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM_ADDRESS ?? 'no-reply@businessleadersofcharlotte.com',
-        to: guest.email,
-        subject: 'Your BLOC link',
-        html: `<p>Hi ${guest.first_name}, <a href="${origin}/guest/me?t=${magic.token}">click here to access your RSVPs</a>.</p>`,
-      }),
+    const email = getEmailClient();
+    await email.sendMagicLink({
+      to: guest.email,
+      guest_first_name: guest.first_name,
+      magic_link: `${origin}/guest/me?t=${magic.token}`,
     });
   } catch (e) {
     // Swallow: still return 200 to user.
