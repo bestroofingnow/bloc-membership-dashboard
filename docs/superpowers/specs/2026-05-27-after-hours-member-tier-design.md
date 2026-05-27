@@ -102,7 +102,8 @@ include `member_type` and allow a null `chapter`.
 - Each chapter card in the Dashboard "Chapter Membership Goals" section renders a
   **"Register for lunch →"** link **only when that chapter's URL is set**.
   A chapter with no configured URL shows no link (data-driven, no hardcoded URLs,
-  admin-editable later via the same settings mechanism).
+  admin-editable later via the same settings mechanism). All four chapter lunch
+  URLs are confirmed and seeded by the migration.
 
 Confirmed URLs to seed:
 
@@ -111,7 +112,7 @@ Confirmed URLs to seed:
 | South   | https://businessleadersofcharlotte.com/event-6651645/Registration |
 | FLOC    | https://businessleadersofcharlotte.com/event-6484425/Registration |
 | Uptown  | https://businessleadersofcharlotte.com/event-6484396/Registration |
-| North   | _pending correct URL — see Open Items_ |
+| North   | https://businessleadersofcharlotte.com/event-6484506/Registration |
 
 ### 6. Data import (run after the schema migration is applied)
 
@@ -156,6 +157,6 @@ already imported in the preceding step. This phase only adds the 7 + 3 above.)
 
 ## Open Items
 
-- **North lunch registration URL** — the value originally supplied duplicated
-  Uptown's (`event-6484396`). North's card will show no lunch link until the
-  correct URL is provided and added to `dashboard_settings.lunch_url_north`.
+- None. All four chapter lunch URLs are confirmed
+  (North: `event-6484506`, resolved after an initial copy/paste duplicated
+  Uptown's `event-6484396`).
