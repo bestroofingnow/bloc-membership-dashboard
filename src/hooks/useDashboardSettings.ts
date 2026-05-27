@@ -20,6 +20,7 @@ const DEFAULTS: Record<string, string> = {
   lunch_url_south: '',
   lunch_url_uptown: '',
   lunch_url_floc: '',
+  lunch_url_alumni: '',
 };
 
 export function useDashboardSettings() {

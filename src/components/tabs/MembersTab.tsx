@@ -180,7 +180,7 @@ export function MembersTab() {
     const csv = [
       ['Name', 'Company', 'Chapter', 'Industry'].join(','),
       ...filteredMembers.map((m) =>
-        [m.name, m.company, m.chapter, m.industry].join(',')
+        [m.name, m.company, m.memberType === 'after_hours' ? 'After Hours' : (m.chapter ?? ''), m.industry].join(',')
       ),
     ].join('\n');
 
