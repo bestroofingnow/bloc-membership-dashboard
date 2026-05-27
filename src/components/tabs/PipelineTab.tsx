@@ -19,13 +19,15 @@ import {
   XCircle,
   Save,
 } from 'lucide-react';
-import { Card, Badge, Button, Modal, Input } from '@/components/ui';
+import { Card, Badge, Button, Modal, Input, useToast } from '@/components/ui';
 import { pipelineStages, getNextStepText } from '@/data/guests';
 import { Guest, GuestStatus } from '@/types';
 import { useGuests } from '@/hooks/useGuests';
 import { useBoardMembers } from '@/hooks/useBoardMembers';
 import { useSignups, PublicSignup } from '@/hooks/useSignups';
+import { useEvents } from '@/hooks/useEvents';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 const stageIcons: Record<string, React.ReactNode> = {
   'New Lead': <UserPlus size={16} />,
@@ -114,10 +116,12 @@ function GuestCard({
   guest,
   onAdvance,
   onEdit,
+  onInvite,
 }: {
   guest: Guest;
   onAdvance: () => void;
   onEdit: () => void;
+  onInvite: () => void;
 }) {
   return (
     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
@@ -150,14 +154,23 @@ function GuestCard({
         </div>
       </div>
 
-      <div className="pt-3 border-t border-slate-100">
-        <p className="text-xs font-semibold text-amber-600 uppercase mb-2">
+      <div className="pt-3 border-t border-slate-100 space-y-2">
+        <p className="text-xs font-semibold text-amber-600 uppercase">
           Next: {guest.nextStep}
         </p>
         <Button size="sm" variant="primary" onClick={onAdvance} className="w-full">
           <span>Advance</span>
           <ChevronRight size={14} className="ml-1" />
         </Button>
+        {guest.email && (
+          <button
+            type="button"
+            onClick={onInvite}
+            className="w-full text-xs text-bloc-blue hover:underline flex items-center justify-center gap-1"
+          >
+            <Mail size={12} /> Invite to event
+          </button>
+        )}
       </div>
     </div>
   );
@@ -174,6 +187,14 @@ export function PipelineTab() {
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processingSignupId, setProcessingSignupId] = useState<string | null>(null);
+
+  // Event invite modal state
+  const { events } = useEvents();
+  const [inviteGuest, setInviteGuest] = useState<Guest | null>(null);
+  const [inviteEventId, setInviteEventId] = useState('');
+  const [inviteMessage, setInviteMessage] = useState('');
+  const [inviteSending, setInviteSending] = useState(false);
+  const toast = useToast();
 
   // New guest form state
   const [newGuest, setNewGuest] = useState({
@@ -406,6 +427,11 @@ export function PipelineTab() {
                   guest={guest}
                   onAdvance={() => handleAdvance(guest)}
                   onEdit={() => handleEditGuest(guest)}
+                  onInvite={() => {
+                    setInviteGuest(guest);
+                    setInviteEventId('');
+                    setInviteMessage('');
+                  }}
                 />
               ))}
             </div>
@@ -606,6 +632,102 @@ export function PipelineTab() {
                   )}
                 </Button>
               )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Event Invite Modal */}
+      <Modal
+        isOpen={inviteGuest !== null}
+        onClose={() => setInviteGuest(null)}
+        title={inviteGuest ? `Invite ${inviteGuest.name} to an event` : 'Invite to event'}
+        size="md"
+      >
+        {inviteGuest && (
+          <div className="space-y-4">
+            <div className="rounded border bg-slate-50 p-3 text-sm">
+              <div><strong>{inviteGuest.name}</strong> · {inviteGuest.company}</div>
+              <div className="text-slate-600">{inviteGuest.email}</div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Event</label>
+              <select
+                value={inviteEventId}
+                onChange={(e) => setInviteEventId(e.target.value)}
+                className="w-full rounded border border-slate-300 p-2"
+              >
+                <option value="">— Pick an upcoming event —</option>
+                {events
+                  .filter((e) => new Date(e.starts_at).getTime() >= Date.now() && e.public_visible)
+                  .map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {new Date(e.starts_at).toLocaleDateString()} · {e.title}
+                      {e.chapter ? ` (${e.chapter})` : ''}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Personal note (optional, logged in guest notes)
+              </label>
+              <textarea
+                value={inviteMessage}
+                onChange={(e) => setInviteMessage(e.target.value)}
+                rows={2}
+                className="w-full rounded border border-slate-300 p-2 text-sm"
+                placeholder="e.g. Met at BLOCtail; following up about real-estate seat."
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setInviteGuest(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                disabled={!inviteEventId || inviteSending}
+                onClick={async () => {
+                  if (!inviteGuest || !inviteEventId) return;
+                  setInviteSending(true);
+                  try {
+                    const { data: session } = await supabase.auth.getSession();
+                    const token = session.session?.access_token;
+                    const res = await fetch('/api/admin/guest-invite', {
+                      method: 'POST',
+                      headers: {
+                        'content-type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                      },
+                      body: JSON.stringify({
+                        guest_id: inviteGuest.id,
+                        event_id: inviteEventId,
+                        custom_message: inviteMessage || undefined,
+                      }),
+                    });
+                    const body = await res.json().catch(() => null);
+                    if (!res.ok) {
+                      toast.error(`Invite failed: ${body?.error ?? `error_${res.status}`}`);
+                    } else {
+                      toast.success(`Invite sent to ${inviteGuest.email}`);
+                      setInviteGuest(null);
+                    }
+                  } catch (e) {
+                    toast.error(`Network error: ${e instanceof Error ? e.message : String(e)}`);
+                  } finally {
+                    setInviteSending(false);
+                  }
+                }}
+              >
+                {inviteSending ? (
+                  <><Loader2 size={14} className="mr-2 animate-spin" /> Sending…</>
+                ) : (
+                  <><Mail size={14} className="mr-2" /> Send invite</>
+                )}
+              </Button>
             </div>
           </div>
         )}
