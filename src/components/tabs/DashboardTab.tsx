@@ -6,6 +6,7 @@ import {
   Target,
   TrendingUp,
   UserPlus,
+  UserCheck,
   HandHeart,
   Handshake,
   Calendar,
@@ -15,7 +16,7 @@ import {
   Inbox,
   AlertCircle,
 } from 'lucide-react';
-import { StatCard, ProgressBar, Card, CardTitle, Button, Modal, Input } from '@/components/ui';
+import { StatCard, ProgressBar, Card, CardTitle, Button, Modal, Input, LunchLink } from '@/components/ui';
 import { useMembers } from '@/hooks/useMembers';
 import { useGuests } from '@/hooks/useGuests';
 import { useIntakeGuests } from '@/hooks/useIntakeGuests';
@@ -33,10 +34,10 @@ const chapterColors: Record<ChapterName, 'blue' | 'green' | 'amber' | 'purple'> 
 };
 
 export function DashboardTab() {
-  const { members, chapterCounts } = useMembers();
+  const { members, chapterCounts, fullMemberCount, afterHoursCount } = useMembers();
   const { guests } = useGuests();
   const { rows: intakeRows } = useIntakeGuests();
-  const { targetMembers, chapterGoals, impactStats, updateMultiple } = useDashboardSettings();
+  const { targetMembers, chapterGoals, chapterLunchUrls, impactStats, updateMultiple } = useDashboardSettings();
   const { isAdmin, isDirector } = useAuth();
 
   const intakeRegistered = intakeRows.filter((r) => r.status === 'registered').length;
@@ -44,7 +45,7 @@ export function DashboardTab() {
     (r) => r.conflict_kind === 'other' || r.has_unresolved_side_effects,
   ).length;
 
-  const currentMembers = members.length;
+  const currentMembers = fullMemberCount;
   const guestsInPipeline = guests.length;
   const membershipProgress = Math.round(
     (currentMembers / targetMembers) * 100
@@ -171,6 +172,13 @@ export function DashboardTab() {
           icon={TrendingUp}
           color="green"
         />
+        <StatCard
+          title="After Hours Members"
+          value={afterHoursCount}
+          subtitle="Wait list — not in the 125 goal"
+          icon={UserCheck}
+          color="purple"
+        />
       </div>
 
       {/* Public-flow intake activity — director/admin only */}
@@ -212,13 +220,17 @@ export function DashboardTab() {
         <div className="mt-6 space-y-5">
           {(Object.entries(chapterGoals) as [ChapterName, number][]).map(
             ([chapter, target]) => (
-              <ProgressBar
-                key={chapter}
-                label={chapter === 'FLOC' ? 'FLOC (Future Leaders)' : `BLOC ${chapter}`}
-                current={chapterCounts[chapter] || 0}
-                target={target}
-                color={chapterColors[chapter]}
-              />
+              <div key={chapter} className="space-y-1.5">
+                <ProgressBar
+                  label={chapter === 'FLOC' ? 'FLOC (Future Leaders)' : `BLOC ${chapter}`}
+                  current={chapterCounts[chapter] || 0}
+                  target={target}
+                  color={chapterColors[chapter]}
+                />
+                {chapterLunchUrls[chapter] && (
+                  <LunchLink chapter={chapter} url={chapterLunchUrls[chapter]} />
+                )}
+              </div>
             )
           )}
         </div>
