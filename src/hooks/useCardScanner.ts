@@ -1,11 +1,25 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
 
-export interface ScannedCard {
+export interface ScanMatch {
+  // Match resolution
+  matchType: 'new_guest' | 'existing_guest' | 'existing_member' | 'no_email' | 'no_persistence';
+  // When matchType = existing_guest, this is the guest id (or new guest id if matchType = new_guest)
+  guestId: string | null;
+  // When matchType = existing_member, this is the member id
+  memberId: string | null;
+  // Display name of the matched member (for UI)
+  memberName: string | null;
+  // Display name of the matched guest (for UI)
+  guestName: string | null;
+  // Total times this email has been scanned (including this scan)
+  scanCount: number;
+}
+
+export interface ScannedCard extends ScanMatch {
   scanId: string | null;
-  guestId?: string | null;
-  guestSkippedReason?: string | null;
   name: string;
   title: string;
   company: string;
@@ -20,9 +34,8 @@ export interface ScannedCard {
 interface ScanResult {
   success: boolean;
   scanId: string | null;
-  guestId?: string | null;
-  guestSkippedReason?: string | null;
-  data: ScannedCard;
+  match: ScanMatch;
+  data: Omit<ScannedCard, keyof ScanMatch | 'scanId'>;
 }
 
 export function useCardScanner() {
@@ -42,9 +55,14 @@ export function useCardScanner() {
       const formData = new FormData();
       formData.append('image', file);
 
+      // Include the caller's JWT so the server can record who did the scan
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+
       const response = await fetch('/api/scan', {
         method: 'POST',
         body: formData,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 
       const result: ScanResult | { error: string } = await response.json();
@@ -57,8 +75,7 @@ export function useCardScanner() {
       const card: ScannedCard = {
         ...result.data,
         scanId: result.scanId,
-        guestId: result.guestId ?? null,
-        guestSkippedReason: result.guestSkippedReason ?? null,
+        ...result.match,
       };
       setScannedCard(card);
       return card;

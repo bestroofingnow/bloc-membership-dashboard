@@ -165,12 +165,112 @@ Return ONLY the JSON object, no other text.`,
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    let guestId: string | null = null;
-    let guestSkippedReason: string | null = null;
+    type MatchType = 'new_guest' | 'existing_guest' | 'existing_member' | 'no_email' | 'no_persistence';
+    let match: {
+      matchType: MatchType;
+      guestId: string | null;
+      memberId: string | null;
+      memberName: string | null;
+      guestName: string | null;
+      scanCount: number;
+    } = {
+      matchType: 'no_persistence',
+      guestId: null,
+      memberId: null,
+      memberName: null,
+      guestName: null,
+      scanCount: 0,
+    };
 
     if (supabaseUrl && serviceRoleKey) {
       const supabase = createClient(supabaseUrl, serviceRoleKey);
-      const { data: insertData, error: insertError } = await supabase
+
+      // Identify the caller (the member doing the scan) from the Bearer token
+      let scannedByProfileId: string | null = null;
+      const auth = request.headers.get('authorization') ?? '';
+      const bearerToken = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : '';
+      if (bearerToken) {
+        const { data: userData } = await supabase.auth.getUser(bearerToken);
+        scannedByProfileId = userData?.user?.id ?? null;
+      }
+
+      const emailNormalized = (extractedData.email || '').trim().toLowerCase() || null;
+
+      // Match resolution: email → member > existing guest > new guest > unmatchable
+      let targetMemberId: string | null = null;
+      let memberName: string | null = null;
+      let targetGuestId: string | null = null;
+      let guestName: string | null = null;
+      let matchType: MatchType = 'no_email';
+
+      if (!emailNormalized) {
+        // No email on the card — can't dedupe or match. Create a guest anyway if we
+        // have name+company (best-effort), but no member/guest matching.
+        matchType = 'no_email';
+      } else {
+        // 1. Already a member?
+        const { data: matchedMember } = await supabase
+          .from('members')
+          .select('id,name')
+          .ilike('email', emailNormalized)
+          .limit(1)
+          .maybeSingle();
+        if (matchedMember) {
+          targetMemberId = (matchedMember as { id: string; name: string }).id;
+          memberName = (matchedMember as { id: string; name: string }).name;
+          matchType = 'existing_member';
+        } else {
+          // 2. Already a guest?
+          const { data: matchedGuest } = await supabase
+            .from('guests')
+            .select('id,name')
+            .ilike('email', emailNormalized)
+            .limit(1)
+            .maybeSingle();
+          if (matchedGuest) {
+            targetGuestId = (matchedGuest as { id: string; name: string }).id;
+            guestName = (matchedGuest as { id: string; name: string }).name;
+            matchType = 'existing_guest';
+          }
+        }
+      }
+
+      // 3. If neither member nor existing guest, create a new guest (if we have name+company)
+      const inputName = (extractedData.name || '').trim();
+      const inputCompany = (extractedData.company || '').trim();
+      if (matchType !== 'existing_member' && matchType !== 'existing_guest' && inputName && inputCompany) {
+        const notes = [
+          extractedData.title ? `Title: ${extractedData.title}` : null,
+          extractedData.website ? `Website: ${extractedData.website}` : null,
+          extractedData.linkedin ? `LinkedIn: ${extractedData.linkedin}` : null,
+          extractedData.additionalNotes ? `Notes: ${extractedData.additionalNotes}` : null,
+        ].filter(Boolean).join('\n');
+        const { data: newGuest, error: newGuestErr } = await supabase
+          .from('guests')
+          .insert([{
+            name: inputName,
+            company: inputCompany,
+            industry: extractedData.title || null,
+            email: extractedData.email || null,
+            phone: extractedData.phone || null,
+            invited_by: 'Card scan',
+            status: 'New Lead',
+            next_step: 'Follow up with intro email',
+            notes: notes || null,
+          }])
+          .select('id,name')
+          .single();
+        if (newGuestErr) {
+          console.error('Failed to create guest from scan:', newGuestErr);
+        } else if (newGuest) {
+          targetGuestId = (newGuest as { id: string; name: string }).id;
+          guestName = (newGuest as { id: string; name: string }).name;
+          matchType = 'new_guest';
+        }
+      }
+
+      // 4. Insert the scan record (with all the resolved IDs)
+      const { data: scanRow, error: scanErr } = await supabase
         .from('business_card_scans')
         .insert([{
           name: extractedData.name || '',
@@ -183,79 +283,43 @@ Return ONLY the JSON object, no other text.`,
           linkedin: extractedData.linkedin || '',
           additional_notes: extractedData.additionalNotes || '',
           exported_to_crm: false,
+          scanned_by_profile_id: scannedByProfileId,
+          target_guest_id: targetGuestId,
+          target_member_id: targetMemberId,
+          email_normalized: emailNormalized,
         }])
         .select('id')
         .single();
-
-      if (insertError) {
-        console.error('Failed to save scan:', insertError);
-        // Don't fail the request - still return the extracted data
+      if (scanErr) {
+        console.error('Failed to save scan:', scanErr);
       } else {
-        scanId = insertData?.id || null;
+        scanId = scanRow?.id || null;
       }
 
-      // Auto-add to kanban pipeline (guests table). Skip if no name/company —
-      // those are required fields on guests and we'd just fail.
-      const guestName = (extractedData.name || '').trim();
-      const guestCompany = (extractedData.company || '').trim();
-      if (guestName && guestCompany) {
-        // Avoid duplicates: if a guest with the same email already exists, skip.
-        let existingId: string | null = null;
-        const guestEmail = (extractedData.email || '').trim().toLowerCase();
-        if (guestEmail) {
-          const { data: existing } = await supabase
-            .from('guests')
-            .select('id')
-            .ilike('email', guestEmail)
-            .limit(1)
-            .maybeSingle();
-          existingId = (existing as { id: string } | null)?.id ?? null;
-        }
-
-        if (existingId) {
-          guestId = existingId;
-          guestSkippedReason = 'duplicate_email';
-        } else {
-          const notes = [
-            extractedData.title ? `Title: ${extractedData.title}` : null,
-            extractedData.website ? `Website: ${extractedData.website}` : null,
-            extractedData.linkedin ? `LinkedIn: ${extractedData.linkedin}` : null,
-            extractedData.additionalNotes ? `Notes: ${extractedData.additionalNotes}` : null,
-            scanId ? `Scan ID: ${scanId}` : null,
-          ].filter(Boolean).join('\n');
-
-          const { data: guestRow, error: guestErr } = await supabase
-            .from('guests')
-            .insert([{
-              name: guestName,
-              company: guestCompany,
-              industry: extractedData.title || null,
-              email: extractedData.email || null,
-              phone: extractedData.phone || null,
-              invited_by: 'Card scan',
-              status: 'New Lead',
-              next_step: 'Follow up with intro email',
-              notes: notes || null,
-            }])
-            .select('id')
-            .single();
-          if (guestErr) {
-            console.error('Failed to create guest from scan:', guestErr);
-            guestSkippedReason = `db_error: ${guestErr.message}`;
-          } else {
-            guestId = (guestRow as { id: string } | null)?.id ?? null;
-          }
-        }
-      } else {
-        guestSkippedReason = 'missing_name_or_company';
+      // 5. Count total scans of this same email (including this one)
+      let scanCount = 0;
+      if (emailNormalized) {
+        const { count } = await supabase
+          .from('business_card_scans')
+          .select('id', { count: 'exact', head: true })
+          .eq('email_normalized', emailNormalized);
+        scanCount = count ?? 0;
       }
+
+      match = {
+        matchType,
+        guestId: targetGuestId,
+        memberId: targetMemberId,
+        memberName,
+        guestName,
+        scanCount,
+      };
     }
 
     return NextResponse.json({
       success: true,
       scanId,
-      guestId,
-      guestSkippedReason,
+      match,
       data: extractedData,
     });
   } catch (err) {

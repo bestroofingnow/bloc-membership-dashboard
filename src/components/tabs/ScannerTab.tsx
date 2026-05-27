@@ -20,8 +20,10 @@ import {
   FileText,
   CreditCard,
 } from 'lucide-react';
-import { Card, Button, Input } from '@/components/ui';
+import { Card, Button, Input, useToast } from '@/components/ui';
 import { useCardScanner, ScannedCard } from '@/hooks/useCardScanner';
+import { useEvents } from '@/hooks/useEvents';
+import { supabase } from '@/lib/supabase';
 
 export function ScannerTab() {
   const {
@@ -233,6 +235,11 @@ export function ScannerTab() {
             </div>
           )}
 
+          {/* Match panel — shows who this card is and what we did with it */}
+          {scannedCard && (
+            <ScanMatchPanel card={scannedCard} />
+          )}
+
           {/* Export Success */}
           {exportSuccess && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
@@ -345,6 +352,157 @@ export function ScannerTab() {
           </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ScanMatchPanel — shown after a successful scan. Surfaces:
+//   • what kind of match happened (member / existing guest / new guest)
+//   • how many times this card has been scanned (network signal)
+//   • inline "Invite to event" action that hits /api/admin/guest-invite
+// ---------------------------------------------------------------------------
+function ScanMatchPanel({ card }: { card: ScannedCard }) {
+  const { events } = useEvents();
+  const toast = useToast();
+  const [eventId, setEventId] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const upcoming = events.filter(
+    (e) => new Date(e.starts_at).getTime() >= Date.now() && e.public_visible,
+  );
+
+  const canInvite = card.guestId !== null && !!card.email;
+  const totalOthers = Math.max(0, card.scanCount - 1);
+  const othersPhrase = totalOthers === 0
+    ? 'first time anyone has scanned this card'
+    : totalOthers === 1
+      ? '1 other member has scanned this card'
+      : `${totalOthers} other members have scanned this card`;
+
+  let header: React.ReactNode = null;
+  if (card.matchType === 'existing_member') {
+    header = (
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+        <p className="text-sm font-semibold text-blue-900">
+          🤝 This is fellow BLOC member <strong>{card.memberName ?? card.name}</strong>
+        </p>
+        <p className="text-xs text-blue-700 mt-1">{othersPhrase}.</p>
+      </div>
+    );
+  } else if (card.matchType === 'existing_guest') {
+    header = (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <p className="text-sm font-semibold text-amber-900">
+          👋 <strong>{card.guestName ?? card.name}</strong> is already in the guest pipeline
+        </p>
+        <p className="text-xs text-amber-700 mt-1">{othersPhrase} — they may be a great candidate.</p>
+      </div>
+    );
+  } else if (card.matchType === 'new_guest') {
+    header = (
+      <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+        <p className="text-sm font-semibold text-green-900">
+          ✓ Added <strong>{card.guestName ?? card.name}</strong> to the guest pipeline
+        </p>
+        <p className="text-xs text-green-700 mt-1">Status: New Lead. {othersPhrase}.</p>
+      </div>
+    );
+  } else if (card.matchType === 'no_email') {
+    header = (
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+        <p className="text-sm font-medium text-gray-700">No email detected on the card.</p>
+        <p className="text-xs text-gray-600 mt-1">
+          Add an email below before saving so we can dedupe future scans of the same contact.
+        </p>
+      </div>
+    );
+  }
+
+  async function sendInvite() {
+    if (!canInvite || !eventId) return;
+    setSending(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      const res = await fetch('/api/admin/guest-invite', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          guest_id: card.guestId,
+          event_id: eventId,
+          custom_message: message || undefined,
+        }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(`Invite failed: ${body?.error ?? `error_${res.status}`}`);
+      } else {
+        toast.success(`Invite sent to ${card.email}`);
+        setSent(true);
+      }
+    } catch (e) {
+      toast.error(`Network error: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {header}
+
+      {canInvite && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Invite them to a meeting</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Sends an email with the event details + a calendar invite (.ics).
+            </p>
+          </div>
+          <select
+            value={eventId}
+            onChange={(e) => setEventId(e.target.value)}
+            disabled={sending || sent}
+            className="w-full rounded border border-slate-300 p-2 text-sm disabled:opacity-50"
+          >
+            <option value="">— Pick an upcoming lunch / event —</option>
+            {upcoming.map((e) => (
+              <option key={e.id} value={e.id}>
+                {new Date(e.starts_at).toLocaleDateString()} · {e.title}
+                {e.chapter ? ` (${e.chapter})` : ''}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            disabled={sending || sent}
+            className="w-full rounded border border-slate-300 p-2 text-sm disabled:opacity-50"
+            placeholder="Optional personal note (logged to guest notes)"
+          />
+          <Button
+            onClick={sendInvite}
+            disabled={!eventId || sending || sent}
+            variant="primary"
+            className="w-full"
+          >
+            {sent ? '✓ Invite sent' : sending ? 'Sending…' : 'Send invite'}
+          </Button>
+        </div>
+      )}
+
+      {card.matchType === 'existing_member' && (
+        <p className="text-xs text-slate-500 px-1">
+          Members aren&apos;t added to the guest pipeline — they&apos;re already in. Scan count is tracked so we can see networking activity.
+        </p>
+      )}
     </div>
   );
 }
