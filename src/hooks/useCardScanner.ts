@@ -4,6 +4,8 @@ import { useState, useCallback } from 'react';
 
 export interface ScannedCard {
   scanId: string | null;
+  guestId?: string | null;
+  guestSkippedReason?: string | null;
   name: string;
   title: string;
   company: string;
@@ -18,6 +20,8 @@ export interface ScannedCard {
 interface ScanResult {
   success: boolean;
   scanId: string | null;
+  guestId?: string | null;
+  guestSkippedReason?: string | null;
   data: ScannedCard;
 }
 
@@ -53,6 +57,8 @@ export function useCardScanner() {
       const card: ScannedCard = {
         ...result.data,
         scanId: result.scanId,
+        guestId: result.guestId ?? null,
+        guestSkippedReason: result.guestSkippedReason ?? null,
       };
       setScannedCard(card);
       return card;

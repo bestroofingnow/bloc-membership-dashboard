@@ -165,6 +165,9 @@ Return ONLY the JSON object, no other text.`,
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+    let guestId: string | null = null;
+    let guestSkippedReason: string | null = null;
+
     if (supabaseUrl && serviceRoleKey) {
       const supabase = createClient(supabaseUrl, serviceRoleKey);
       const { data: insertData, error: insertError } = await supabase
@@ -190,11 +193,69 @@ Return ONLY the JSON object, no other text.`,
       } else {
         scanId = insertData?.id || null;
       }
+
+      // Auto-add to kanban pipeline (guests table). Skip if no name/company —
+      // those are required fields on guests and we'd just fail.
+      const guestName = (extractedData.name || '').trim();
+      const guestCompany = (extractedData.company || '').trim();
+      if (guestName && guestCompany) {
+        // Avoid duplicates: if a guest with the same email already exists, skip.
+        let existingId: string | null = null;
+        const guestEmail = (extractedData.email || '').trim().toLowerCase();
+        if (guestEmail) {
+          const { data: existing } = await supabase
+            .from('guests')
+            .select('id')
+            .ilike('email', guestEmail)
+            .limit(1)
+            .maybeSingle();
+          existingId = (existing as { id: string } | null)?.id ?? null;
+        }
+
+        if (existingId) {
+          guestId = existingId;
+          guestSkippedReason = 'duplicate_email';
+        } else {
+          const notes = [
+            extractedData.title ? `Title: ${extractedData.title}` : null,
+            extractedData.website ? `Website: ${extractedData.website}` : null,
+            extractedData.linkedin ? `LinkedIn: ${extractedData.linkedin}` : null,
+            extractedData.additionalNotes ? `Notes: ${extractedData.additionalNotes}` : null,
+            scanId ? `Scan ID: ${scanId}` : null,
+          ].filter(Boolean).join('\n');
+
+          const { data: guestRow, error: guestErr } = await supabase
+            .from('guests')
+            .insert([{
+              name: guestName,
+              company: guestCompany,
+              industry: extractedData.title || null,
+              email: extractedData.email || null,
+              phone: extractedData.phone || null,
+              invited_by: 'Card scan',
+              status: 'New Lead',
+              next_step: 'Follow up with intro email',
+              notes: notes || null,
+            }])
+            .select('id')
+            .single();
+          if (guestErr) {
+            console.error('Failed to create guest from scan:', guestErr);
+            guestSkippedReason = `db_error: ${guestErr.message}`;
+          } else {
+            guestId = (guestRow as { id: string } | null)?.id ?? null;
+          }
+        }
+      } else {
+        guestSkippedReason = 'missing_name_or_company';
+      }
     }
 
     return NextResponse.json({
       success: true,
       scanId,
+      guestId,
+      guestSkippedReason,
       data: extractedData,
     });
   } catch (err) {
