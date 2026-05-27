@@ -28,6 +28,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   changePassword: (newPassword: string) => Promise<{ error: string | null }>;
+  requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
   isAdmin: boolean;
   isDirector: boolean;
   canEdit: boolean;
@@ -224,6 +225,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const requestPasswordReset = async (email: string): Promise<{ error: string | null }> => {
+    if (!isConfigured) {
+      return { error: 'Supabase is not configured' };
+    }
+    try {
+      const redirectTo = typeof window !== 'undefined'
+        ? `${window.location.origin}/reset-password`
+        : undefined;
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo,
+      });
+      if (resetError) {
+        return { error: resetError.message };
+      }
+      return { error: null };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to send reset email';
+      return { error: message };
+    }
+  };
+
   const signOut = async () => {
     if (!isConfigured) return;
 
@@ -255,6 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUp,
         signOut,
         changePassword,
+        requestPasswordReset,
         isAdmin,
         isDirector,
         canEdit,

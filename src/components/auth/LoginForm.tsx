@@ -10,8 +10,10 @@ interface LoginFormProps {
   onSuccess?: () => void;
 }
 
+type Mode = 'signin' | 'signup' | 'reset';
+
 export function LoginForm({ onSuccess }: LoginFormProps) {
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -19,13 +21,33 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { signIn, signUp, error: authError, clearError, isConfigured } = useAuth();
+  const { signIn, signUp, requestPasswordReset, error: authError, clearError, isConfigured } = useAuth();
+  const isSignUp = mode === 'signup';
+  const isReset = mode === 'reset';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
     setSuccessMessage(null);
     clearError();
+
+    if (isReset) {
+      if (!email) {
+        setLocalError('Please enter your email');
+        return;
+      }
+      setIsSubmitting(true);
+      const { error } = await requestPasswordReset(email);
+      if (error) {
+        setLocalError(error);
+      } else {
+        setSuccessMessage(
+          `If an account exists for ${email}, a password reset link has been sent. Check your inbox (and spam folder).`,
+        );
+      }
+      setIsSubmitting(false);
+      return;
+    }
 
     if (!email || !password) {
       setLocalError('Please fill in all required fields');
@@ -48,7 +70,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       const { error } = await signUp(email, password, fullName);
       if (!error) {
         setSuccessMessage('Account created! Please check your email to verify your account.');
-        setIsSignUp(false);
+        setMode('signin');
         setPassword('');
       }
     } else {
@@ -60,6 +82,13 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
     setIsSubmitting(false);
   };
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setLocalError(null);
+    setSuccessMessage(null);
+    clearError();
+  }
 
   const error = localError || authError;
 
@@ -102,7 +131,11 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           </div>
           <h2 className="text-3xl font-bold text-bloc-navy">BLOC Dashboard</h2>
           <p className="mt-2 text-gray-600">
-            {isSignUp ? 'Create your account' : 'Sign in to your account'}
+            {isReset
+              ? 'Reset your password'
+              : isSignUp
+                ? 'Create your account'
+                : 'Sign in to your account'}
           </p>
         </div>
 
@@ -160,51 +193,63 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue"
-                  placeholder="••••••••"
-                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                />
+            {!isReset && (
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue"
+                    placeholder="••••••••"
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                {isReset ? 'Sending…' : isSignUp ? 'Creating Account...' : 'Signing In...'}
               </>
             ) : (
-              isSignUp ? 'Create Account' : 'Sign In'
+              isReset ? 'Send reset link' : isSignUp ? 'Create Account' : 'Sign In'
             )}
           </Button>
 
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setIsSignUp(!isSignUp);
-                setLocalError(null);
-                setSuccessMessage(null);
-                clearError();
-              }}
-              className="text-sm text-bloc-blue hover:text-bloc-navy"
-            >
-              {isSignUp
-                ? 'Already have an account? Sign in'
-                : "Don't have an account? Sign up"}
-            </button>
+          <div className="text-center space-y-2">
+            {!isReset && !isSignUp && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => switchMode('reset')}
+                  className="text-sm text-bloc-blue hover:text-bloc-navy"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
+            <div>
+              <button
+                type="button"
+                onClick={() => switchMode(isSignUp || isReset ? 'signin' : 'signup')}
+                className="text-sm text-bloc-blue hover:text-bloc-navy"
+              >
+                {isSignUp
+                  ? 'Already have an account? Sign in'
+                  : isReset
+                    ? 'Back to sign in'
+                    : "Don't have an account? Sign up"}
+              </button>
+            </div>
           </div>
         </form>
 
