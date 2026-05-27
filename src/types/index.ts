@@ -43,8 +43,10 @@ export interface Member {
   id: string;
   name: string;
   company: string;
-  chapter: ChapterName;
+  chapter: ChapterName | null;
   industry: string;
+  /** 'full' chapter member, or 'after_hours' wait-list tier (no chapter). */
+  memberType?: 'full' | 'after_hours';
   email?: string;
   phone?: string;
   title?: string;
