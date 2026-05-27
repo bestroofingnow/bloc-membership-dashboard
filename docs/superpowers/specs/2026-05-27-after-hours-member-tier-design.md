@@ -100,10 +100,24 @@ include `member_type` and allow a null `chapter`.
 - Per-chapter URLs live in `dashboard_settings` (see §1), exposed through
   `useDashboardSettings` alongside the existing goal keys.
 - Each chapter card in the Dashboard "Chapter Membership Goals" section renders a
-  **"Register for lunch →"** link **only when that chapter's URL is set**.
-  A chapter with no configured URL shows no link (data-driven, no hardcoded URLs,
-  admin-editable later via the same settings mechanism). All four chapter lunch
-  URLs are confirmed and seeded by the migration.
+  lunch row **only when that chapter's URL is set**. A chapter with no configured
+  URL shows nothing (data-driven, no hardcoded URLs, admin-editable later via the
+  same settings mechanism). All four chapter lunch URLs are confirmed and seeded
+  by the migration.
+- Each lunch row offers three actions:
+  1. **Register for lunch →** — a link that opens the chapter's registration page
+     in a new tab, so the user can sign someone up themselves.
+  2. **Share** — invokes the Web Share API (`navigator.share`) with the
+     registration URL, opening the device share sheet (text, email, messaging
+     apps, etc.). When `navigator.share` is unavailable (most desktops), it falls
+     back to copying the link to the clipboard and showing a "Copied!" toast via
+     the existing `useToast`.
+  3. **QR code** — opens a small popover/modal showing a scannable QR of the
+     registration URL (so a guest can scan and register on the spot), rendered
+     with the existing `QrImage` component (`src/components/ui/QrImage.tsx`,
+     backed by the `qrcode` package already used by `QrTokensTab`).
+- The share/QR helpers are generic (take a label + URL) so they can be reused
+  beyond lunch links if needed; no new dependency is introduced.
 
 Confirmed URLs to seed:
 
@@ -151,8 +165,10 @@ already imported in the preceding step. This phase only adds the 7 + 3 above.)
   any chapter count; `afterHoursCount` increments.
 - Roster: after-hours members show the badge, appear under the filter, and group
   under "After Hours"; full members are unaffected.
-- Dashboard: chapter cards show a lunch link only for chapters with a URL set;
-  North shows none until its URL is added.
+- Dashboard: chapter cards show a lunch row only for chapters with a URL set.
+- Lunch row actions: "Register" opens the correct URL in a new tab; "Share" calls
+  `navigator.share` when available and otherwise copies the link with a "Copied!"
+  toast; "QR code" renders a scannable QR of the registration URL.
 - Import: re-running the import is idempotent (dedupes by email/name).
 
 ## Open Items
