@@ -23,6 +23,14 @@ ALTER TABLE members
   CHECK (chapter IS NULL OR chapter IN ('North','South','Uptown','FLOC','Alumni'));
 
 -- 3. Seed per-chapter lunch registration URLs (admin-editable via dashboard_settings).
+-- Guard: ensure the settings table exists (migration 007 may have been skipped on
+-- some environments) so this migration is self-sufficient.
+CREATE TABLE IF NOT EXISTS dashboard_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 INSERT INTO dashboard_settings (key, value) VALUES
   ('lunch_url_south',  'https://businessleadersofcharlotte.com/event-6651645/Registration'),
   ('lunch_url_floc',   'https://businessleadersofcharlotte.com/event-6484425/Registration'),
