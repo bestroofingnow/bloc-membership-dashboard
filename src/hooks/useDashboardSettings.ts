@@ -16,6 +16,11 @@ const DEFAULTS: Record<string, string> = {
   impact_referrals: '10,000+',
   impact_transactions: '9,000+',
   impact_charity: '$732,171.45',
+  lunch_url_north: '',
+  lunch_url_south: '',
+  lunch_url_uptown: '',
+  lunch_url_floc: '',
+  lunch_url_alumni: '',
 };
 
 export function useDashboardSettings() {
@@ -121,6 +126,14 @@ export function useDashboardSettings() {
     Alumni: parseInt(settings.chapter_goal_alumni) || 20,
   };
 
+  const chapterLunchUrls: Record<ChapterName, string> = {
+    North: settings.lunch_url_north || '',
+    South: settings.lunch_url_south || '',
+    Uptown: settings.lunch_url_uptown || '',
+    FLOC: settings.lunch_url_floc || '',
+    Alumni: settings.lunch_url_alumni || '',
+  };
+
   const impactStats = {
     referrals: settings.impact_referrals || '10,000+',
     transactions: settings.impact_transactions || '9,000+',
@@ -135,6 +148,7 @@ export function useDashboardSettings() {
     updateMultiple,
     targetMembers,
     chapterGoals,
+    chapterLunchUrls,
     impactStats,
     refetch: fetchSettings,
   };

@@ -8,21 +8,22 @@ import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { ChapterName, Member } from '@/types';
 
-type ChapterFilter = ChapterName | 'all';
+type ChapterFilter = ChapterName | 'all' | 'after_hours';
 
 const chapterFilters: { value: ChapterFilter; label: string }[] = [
-  { value: 'all', label: 'All Chapters' },
+  { value: 'all', label: 'All Members' },
   { value: 'North', label: 'North' },
   { value: 'South', label: 'South' },
   { value: 'Uptown', label: 'Uptown' },
   { value: 'FLOC', label: 'FLOC' },
   { value: 'Alumni', label: 'Alumni' },
+  { value: 'after_hours', label: 'After Hours' },
 ];
 
 const chapters: ChapterName[] = ['North', 'South', 'Uptown', 'FLOC', 'Alumni'];
 
 export function MembersTab() {
-  const { members, chapterCounts, loading, error, addMember, updateMember, deleteMember } = useMembers();
+  const { members, chapterCounts, afterHoursCount, loading, error, addMember, updateMember, deleteMember } = useMembers();
   const { canEdit, isAdmin } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [chapterFilter, setChapterFilter] = useState<ChapterFilter>('all');
@@ -154,8 +155,12 @@ export function MembersTab() {
   const filteredMembers = useMemo(() => {
     let result = members;
 
-    if (chapterFilter !== 'all') {
-      result = result.filter((m) => m.chapter === chapterFilter);
+    if (chapterFilter === 'after_hours') {
+      result = result.filter((m) => m.memberType === 'after_hours');
+    } else if (chapterFilter !== 'all') {
+      result = result.filter(
+        (m) => m.memberType !== 'after_hours' && m.chapter === chapterFilter,
+      );
     }
 
     if (searchQuery) {
@@ -175,7 +180,7 @@ export function MembersTab() {
     const csv = [
       ['Name', 'Company', 'Chapter', 'Industry'].join(','),
       ...filteredMembers.map((m) =>
-        [m.name, m.company, m.chapter, m.industry].join(',')
+        [m.name, m.company, m.memberType === 'after_hours' ? 'After Hours' : (m.chapter ?? ''), m.industry].join(',')
       ),
     ].join('\n');
 
@@ -237,7 +242,7 @@ export function MembersTab() {
   return (
     <div className="space-y-6">
       {/* Chapter Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {(Object.entries(chapterCounts) as [ChapterName, number][]).map(
           ([chapter, count]) => (
             <button
@@ -262,6 +267,25 @@ export function MembersTab() {
             </button>
           )
         )}
+        <button
+          onClick={() =>
+            setChapterFilter(chapterFilter === 'after_hours' ? 'all' : 'after_hours')
+          }
+          className={`p-4 rounded-xl text-center transition-all ${
+            chapterFilter === 'after_hours'
+              ? 'bg-bloc-blue text-white shadow-lg scale-105'
+              : 'bg-white border border-slate-200 hover:border-bloc-blue'
+          }`}
+        >
+          <p className="text-2xl font-bold">{afterHoursCount}</p>
+          <p
+            className={`text-sm ${
+              chapterFilter === 'after_hours' ? 'text-blue-100' : 'text-slate-500'
+            }`}
+          >
+            After Hours
+          </p>
+        </button>
       </div>
 
       {/* Search & Filters */}
@@ -301,7 +325,9 @@ export function MembersTab() {
       {/* Results Count */}
       <p className="text-sm text-slate-500">
         Showing {filteredMembers.length} members
-        {chapterFilter !== 'all' && ` in ${chapterFilter}`}
+        {chapterFilter === 'after_hours'
+          ? ' on the After Hours wait list'
+          : chapterFilter !== 'all' && ` in ${chapterFilter}`}
       </p>
 
       {/* Members Table */}
@@ -361,7 +387,11 @@ export function MembersTab() {
                     </div>
                   </td>
                   <td className="p-4">
-                    <Badge chapter={member.chapter}>{member.chapter}</Badge>
+                    {member.memberType === 'after_hours' ? (
+                      <Badge className="bg-purple-100 text-purple-700 border-purple-200">After Hours</Badge>
+                    ) : (
+                      <Badge chapter={member.chapter ?? undefined}>{member.chapter ?? ''}</Badge>
+                    )}
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-1.5 text-slate-500 text-sm">
@@ -538,7 +568,11 @@ export function MembersTab() {
                   <p className="text-slate-600">{detailMember.title}</p>
                 )}
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge chapter={detailMember.chapter}>{detailMember.chapter}</Badge>
+                  {detailMember.memberType === 'after_hours' ? (
+                    <Badge className="bg-purple-100 text-purple-700 border-purple-200">After Hours</Badge>
+                  ) : (
+                    <Badge chapter={detailMember.chapter ?? undefined}>{detailMember.chapter ?? ''}</Badge>
+                  )}
                   {detailMember.industry && (
                     <span className="text-sm text-slate-500">{detailMember.industry}</span>
                   )}
