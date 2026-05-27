@@ -29,6 +29,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   changePassword: (newPassword: string) => Promise<{ error: string | null }>;
   requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
+  signInWithMagicLink: (email: string) => Promise<{ error: string | null }>;
   isAdmin: boolean;
   isDirector: boolean;
   canEdit: boolean;
@@ -246,6 +247,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithMagicLink = async (email: string): Promise<{ error: string | null }> => {
+    if (!isConfigured) {
+      return { error: 'Supabase is not configured' };
+    }
+    try {
+      const emailRedirectTo = typeof window !== 'undefined'
+        ? `${window.location.origin}/`
+        : undefined;
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: { emailRedirectTo, shouldCreateUser: false },
+      });
+      if (otpError) {
+        return { error: otpError.message };
+      }
+      return { error: null };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to send magic link';
+      return { error: message };
+    }
+  };
+
   const signOut = async () => {
     if (!isConfigured) return;
 
@@ -278,6 +301,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signOut,
         changePassword,
         requestPasswordReset,
+        signInWithMagicLink,
         isAdmin,
         isDirector,
         canEdit,

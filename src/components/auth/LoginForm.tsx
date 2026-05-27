@@ -10,7 +10,7 @@ interface LoginFormProps {
   onSuccess?: () => void;
 }
 
-type Mode = 'signin' | 'signup' | 'reset';
+type Mode = 'signin' | 'signup' | 'reset' | 'magic';
 
 export function LoginForm({ onSuccess }: LoginFormProps) {
   const [mode, setMode] = useState<Mode>('signin');
@@ -21,9 +21,11 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { signIn, signUp, requestPasswordReset, error: authError, clearError, isConfigured } = useAuth();
+  const { signIn, signUp, requestPasswordReset, signInWithMagicLink, error: authError, clearError, isConfigured } = useAuth();
   const isSignUp = mode === 'signup';
   const isReset = mode === 'reset';
+  const isMagic = mode === 'magic';
+  const isPasswordless = isReset || isMagic;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,18 +33,22 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     setSuccessMessage(null);
     clearError();
 
-    if (isReset) {
+    if (isPasswordless) {
       if (!email) {
         setLocalError('Please enter your email');
         return;
       }
       setIsSubmitting(true);
-      const { error } = await requestPasswordReset(email);
+      const { error } = isMagic
+        ? await signInWithMagicLink(email)
+        : await requestPasswordReset(email);
       if (error) {
         setLocalError(error);
       } else {
         setSuccessMessage(
-          `If an account exists for ${email}, a password reset link has been sent. Check your inbox (and spam folder).`,
+          isMagic
+            ? `If an account exists for ${email}, a one-time sign-in link has been sent. Click it on this device to log in.`
+            : `If an account exists for ${email}, a password reset link has been sent. Check your inbox (and spam folder).`,
         );
       }
       setIsSubmitting(false);
@@ -133,9 +139,11 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           <p className="mt-2 text-gray-600">
             {isReset
               ? 'Reset your password'
-              : isSignUp
-                ? 'Create your account'
-                : 'Sign in to your account'}
+              : isMagic
+                ? 'Sign in with a one-time email link'
+                : isSignUp
+                  ? 'Create your account'
+                  : 'Sign in to your account'}
           </p>
         </div>
 
@@ -193,7 +201,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
               </div>
             </div>
 
-            {!isReset && (
+            {!isPasswordless && (
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                   Password
@@ -218,34 +226,45 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {isReset ? 'Sending…' : isSignUp ? 'Creating Account...' : 'Signing In...'}
+                {isMagic ? 'Sending link…' : isReset ? 'Sending…' : isSignUp ? 'Creating Account...' : 'Signing In...'}
               </>
             ) : (
-              isReset ? 'Send reset link' : isSignUp ? 'Create Account' : 'Sign In'
+              isMagic ? 'Email me a sign-in link' : isReset ? 'Send reset link' : isSignUp ? 'Create Account' : 'Sign In'
             )}
           </Button>
 
           <div className="text-center space-y-2">
-            {!isReset && !isSignUp && (
-              <div>
-                <button
-                  type="button"
-                  onClick={() => switchMode('reset')}
-                  className="text-sm text-bloc-blue hover:text-bloc-navy"
-                >
-                  Forgot password?
-                </button>
-              </div>
+            {mode === 'signin' && (
+              <>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => switchMode('magic')}
+                    className="text-sm text-bloc-blue hover:text-bloc-navy"
+                  >
+                    Sign in with an email link instead
+                  </button>
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => switchMode('reset')}
+                    className="text-sm text-bloc-blue hover:text-bloc-navy"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              </>
             )}
             <div>
               <button
                 type="button"
-                onClick={() => switchMode(isSignUp || isReset ? 'signin' : 'signup')}
+                onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}
                 className="text-sm text-bloc-blue hover:text-bloc-navy"
               >
                 {isSignUp
                   ? 'Already have an account? Sign in'
-                  : isReset
+                  : isPasswordless
                     ? 'Back to sign in'
                     : "Don't have an account? Sign up"}
               </button>
