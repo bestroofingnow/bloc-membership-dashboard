@@ -19,10 +19,36 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
+  // Keep a ref to the latest onClose so the keydown listener can call it without
+  // onClose being an effect dependency. Callers pass inline arrow onClose props,
+  // so a new identity arrives every parent render (e.g. on every keystroke in a
+  // modal form); depending on it would tear down and re-run the focus logic each
+  // keystroke, stealing focus back to the first field.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // One-shot focus management: capture + autofocus on open, restore on close.
+  // Keyed ONLY on isOpen so typing in the dialog never re-triggers it.
   useEffect(() => {
     if (!isOpen) return;
     previouslyFocused.current = document.activeElement as HTMLElement | null;
     document.body.style.overflow = 'hidden';
+
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+    );
+    (focusable?.[0] ?? dialogRef.current)?.focus();
+
+    return () => {
+      document.body.style.overflow = '';
+      previouslyFocused.current?.focus();
+    };
+  }, [isOpen]);
+
+  // Escape-to-close + Tab focus trap. Keyed ONLY on isOpen; reads the latest
+  // onClose via onCloseRef so it is not a dependency.
+  useEffect(() => {
+    if (!isOpen) return;
 
     const getFocusable = () =>
       Array.from(
@@ -31,13 +57,9 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
         ) ?? []
       );
 
-    // autoFocus the first focusable element (or the dialog itself).
-    const focusable = getFocusable();
-    (focusable[0] ?? dialogRef.current)?.focus();
-
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -58,12 +80,8 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
     };
 
     document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('keydown', handleKey);
-      document.body.style.overflow = '';
-      previouslyFocused.current?.focus();
-    };
-  }, [isOpen, onClose]);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
