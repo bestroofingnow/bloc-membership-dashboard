@@ -30,6 +30,12 @@ export function useWildApricot() {
   const [logsLoading, setLogsLoading] = useState(true);
   const isConfigured = isSupabaseConfigured();
 
+  const authHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, []);
+
   const fetchSyncLogs = useCallback(async () => {
     if (!isConfigured) {
       setLogsLoading(false);
@@ -74,7 +80,10 @@ export function useWildApricot() {
     setLastResult(null);
 
     try {
-      const response = await fetch('/api/wa/sync-members', { method: 'POST' });
+      const response = await fetch('/api/wa/sync-members', {
+        method: 'POST',
+        headers: await authHeaders(),
+      });
       const data = await response.json();
 
       const result: SyncResult = response.ok
@@ -98,7 +107,10 @@ export function useWildApricot() {
     setLastResult(null);
 
     try {
-      const response = await fetch('/api/wa/sync-events', { method: 'POST' });
+      const response = await fetch('/api/wa/sync-events', {
+        method: 'POST',
+        headers: await authHeaders(),
+      });
       const data = await response.json();
 
       const result: SyncResult = response.ok
@@ -124,7 +136,7 @@ export function useWildApricot() {
     try {
       const response = await fetch('/api/wa/push-member', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
         body: JSON.stringify({ guestId }),
       });
       const data = await response.json();

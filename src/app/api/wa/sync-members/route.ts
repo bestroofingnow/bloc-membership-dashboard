@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/api/auth';
 import {
   getActiveMembers,
   isWildApricotConfigured,
@@ -37,7 +38,12 @@ function mapChapter(contact: WAContact): string {
   return 'North'; // Default chapter
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const gate = await requireAdmin(request);
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  }
+
   if (!isWildApricotConfigured()) {
     return NextResponse.json(
       { error: 'Wild Apricot is not configured' },
