@@ -28,6 +28,7 @@ import { useSignups, PublicSignup } from '@/hooks/useSignups';
 import { useEvents } from '@/hooks/useEvents';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { visibleKanbanStages } from '@/lib/pipeline/stages';
 
 const stageIcons: Record<string, React.ReactNode> = {
   'New Lead': <UserPlus size={16} />,
@@ -319,8 +320,8 @@ export function PipelineTab() {
     );
   }
 
-  // Show condensed view for mobile - first 3 stages
-  const displayStages = guestsByStage.slice(0, 6);
+  // Render all 8 stages — no slicing (was slice(0,6), which hid App Received + Approved).
+  const displayStages = visibleKanbanStages(guestsByStage);
 
   return (
     <div className="space-y-6">
@@ -401,7 +402,7 @@ export function PipelineTab() {
       </div>
 
       {/* Pipeline Columns */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-4">
         {displayStages.map((stage) => (
           <div
             key={stage.status}
