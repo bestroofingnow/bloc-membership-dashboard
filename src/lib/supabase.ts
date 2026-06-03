@@ -15,3 +15,5 @@ export const supabase = createClient(
 export const isSupabaseConfigured = () => {
   return !!supabaseUrl && !!supabaseAnonKey;
 };
+
+export { isDemoMode } from './demo-mode';

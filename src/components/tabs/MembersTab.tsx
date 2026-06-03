@@ -5,7 +5,7 @@ import { Users, Building2, Briefcase, Download, Loader2, UserPlus, Trash2, Shiel
 import { Card, Badge, SearchInput, Button, Modal, Input } from '@/components/ui';
 import { useMembers } from '@/hooks/useMembers';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { ChapterName, Member } from '@/types';
 
 type ChapterFilter = ChapterName | 'all' | 'after_hours';
@@ -25,6 +25,7 @@ const chapters: ChapterName[] = ['North', 'South', 'Uptown', 'FLOC', 'Alumni'];
 export function MembersTab() {
   const { members, chapterCounts, afterHoursCount, loading, error, addMember, updateMember, deleteMember } = useMembers();
   const { canEdit, isAdmin } = useAuth();
+  const isConfigured = isSupabaseConfigured();
   const [searchQuery, setSearchQuery] = useState('');
   const [chapterFilter, setChapterFilter] = useState<ChapterFilter>('all');
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -430,7 +431,17 @@ export function MembersTab() {
         </div>
       </Card>
 
-      {filteredMembers.length === 0 && (
+      {!loading && members.length === 0 && isConfigured && (
+        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
+          <p className="font-medium text-slate-700">No members found</p>
+          <p className="text-sm mt-1">
+            Your account is connected but the directory returned no rows. If you expected members,
+            contact an admin — the dashboard will not show placeholder data.
+          </p>
+        </div>
+      )}
+
+      {members.length > 0 && filteredMembers.length === 0 && (
         <div className="text-center py-12 text-slate-500">
           <Users size={48} className="mx-auto mb-3 opacity-50" />
           <p>No members match your search.</p>

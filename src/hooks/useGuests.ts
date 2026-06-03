@@ -5,6 +5,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Guest, GuestStatus } from '@/types';
 import { initialGuests, getNextStatus, getNextStepText } from '@/data/guests';
+import { chooseInitialData, resolveFetchResult, isDemoMode } from '@/lib/demo-mode';
 
 // Transform database row to app Guest type
 function transformDbToGuest(row: any): Guest {
@@ -40,11 +41,14 @@ function transformGuestToDb(guest: Partial<Guest>): any {
 }
 
 export function useGuests() {
-  const [guests, setGuests] = useState<Guest[]>(initialGuests);
+  const isConfigured = isSupabaseConfigured();
+  const isDemo = isDemoMode();
+  const [guests, setGuests] = useState<Guest[]>(
+    chooseInitialData(initialGuests, { isConfigured, isDemo })
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { canEdit, session } = useAuth();
-  const isConfigured = isSupabaseConfigured();
 
   const fetchGuests = useCallback(async () => {
     if (!isConfigured || !session) {
@@ -61,17 +65,17 @@ export function useGuests() {
       if (fetchError) {
         setError(fetchError.message);
         console.error('Error fetching guests:', fetchError);
-      } else if (data && data.length > 0) {
-        setGuests(data.map(transformDbToGuest));
+      } else {
+        const rows = (data ?? []).map(transformDbToGuest);
+        setGuests(resolveFetchResult(rows, initialGuests, { isConfigured, isDemo }));
       }
-      // If empty, keep static fallback data
     } catch (err) {
       console.error('Fetch guests error:', err);
       setError('Failed to load guests');
     } finally {
       setLoading(false);
     }
-  }, [isConfigured, session]);
+  }, [isConfigured, isDemo, session]);
 
   useEffect(() => {
     fetchGuests();

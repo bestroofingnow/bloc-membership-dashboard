@@ -5,6 +5,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Member, ChapterName } from '@/types';
 import { members as staticMembers } from '@/data/members';
+import { chooseInitialData, resolveFetchResult, isDemoMode } from '@/lib/demo-mode';
 import { summarizeMembers } from '@/lib/members/summary';
 
 function transformDbToMember(row: any): Member {
@@ -30,11 +31,14 @@ function transformDbToMember(row: any): Member {
 }
 
 export function useMembers() {
-  const [members, setMembers] = useState<Member[]>(staticMembers);
+  const isConfigured = isSupabaseConfigured();
+  const isDemo = isDemoMode();
+  const [members, setMembers] = useState<Member[]>(
+    chooseInitialData(staticMembers, { isConfigured, isDemo })
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { canEdit, session } = useAuth();
-  const isConfigured = isSupabaseConfigured();
 
   const fetchMembers = useCallback(async () => {
     if (!isConfigured || !session) {
@@ -51,17 +55,17 @@ export function useMembers() {
       if (fetchError) {
         setError(fetchError.message);
         console.error('Error fetching members:', fetchError);
-      } else if (data && data.length > 0) {
-        setMembers(data.map(transformDbToMember));
+      } else {
+        const rows = (data ?? []).map(transformDbToMember);
+        setMembers(resolveFetchResult(rows, staticMembers, { isConfigured, isDemo }));
       }
-      // If empty, keep static fallback data
     } catch (err) {
       console.error('Fetch members error:', err);
       setError('Failed to load members');
     } finally {
       setLoading(false);
     }
-  }, [isConfigured, session]);
+  }, [isConfigured, isDemo, session]);
 
   useEffect(() => {
     fetchMembers();
