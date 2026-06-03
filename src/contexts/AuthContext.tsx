@@ -162,39 +162,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string): Promise<{ error: string | null }> => {
-    if (!isConfigured) {
-      return { error: 'Supabase is not configured' };
-    }
-
-    setError(null);
-    setLoading(true);
-
-    try {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-          },
-        },
-      });
-
-      if (signUpError) {
-        setError(signUpError.message);
-        setLoading(false);
-        return { error: signUpError.message };
-      }
-
-      setLoading(false);
-      return { error: null };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Sign up failed';
-      setError(message);
-      setLoading(false);
-      return { error: message };
-    }
+  const signUp = async (
+    _email: string,
+    _password: string,
+    _fullName: string
+  ): Promise<{ error: string | null }> => {
+    // Self-signup is disabled. Accounts are admin-provisioned; new members
+    // apply at /join. handle_new_user still runs for provisioned accounts.
+    return { error: 'Self-signup is disabled. Apply at /join.' };
   };
 
   const changePassword = async (newPassword: string): Promise<{ error: string | null }> => {

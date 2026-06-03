@@ -4,25 +4,23 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Mail, Lock, User, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 
 interface LoginFormProps {
   onSuccess?: () => void;
 }
 
-type Mode = 'signin' | 'signup' | 'reset' | 'magic';
+type Mode = 'signin' | 'reset' | 'magic';
 
 export function LoginForm({ onSuccess }: LoginFormProps) {
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { signIn, signUp, requestPasswordReset, signInWithMagicLink, error: authError, clearError, isConfigured } = useAuth();
-  const isSignUp = mode === 'signup';
+  const { signIn, requestPasswordReset, signInWithMagicLink, error: authError, clearError, isConfigured } = useAuth();
   const isReset = mode === 'reset';
   const isMagic = mode === 'magic';
   const isPasswordless = isReset || isMagic;
@@ -60,32 +58,16 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       return;
     }
 
-    if (isSignUp && !fullName) {
-      setLocalError('Please enter your full name');
-      return;
-    }
-
     if (password.length < 6) {
       setLocalError('Password must be at least 6 characters');
       return;
     }
 
     setIsSubmitting(true);
-
-    if (isSignUp) {
-      const { error } = await signUp(email, password, fullName);
-      if (!error) {
-        setSuccessMessage('Account created! Please check your email to verify your account.');
-        setMode('signin');
-        setPassword('');
-      }
-    } else {
-      const { error } = await signIn(email, password);
-      if (!error && onSuccess) {
-        onSuccess();
-      }
+    const { error } = await signIn(email, password);
+    if (!error && onSuccess) {
+      onSuccess();
     }
-
     setIsSubmitting(false);
   };
 
@@ -141,9 +123,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
               ? 'Reset your password'
               : isMagic
                 ? 'Sign in with a one-time email link'
-                : isSignUp
-                  ? 'Create your account'
-                  : 'Sign in to your account'}
+                : 'Sign in to your account'}
           </p>
         </div>
 
@@ -164,25 +144,6 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           )}
 
           <div className="space-y-4">
-            {isSignUp && (
-              <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    id="fullName"
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue"
-                    placeholder="John Smith"
-                  />
-                </div>
-              </div>
-            )}
-
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email Address
@@ -215,7 +176,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue"
                     placeholder="••••••••"
-                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                    autoComplete="current-password"
                   />
                 </div>
               </div>
@@ -226,10 +187,10 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {isMagic ? 'Sending link…' : isReset ? 'Sending…' : isSignUp ? 'Creating Account...' : 'Signing In...'}
+                {isMagic ? 'Sending link…' : isReset ? 'Sending…' : 'Signing In...'}
               </>
             ) : (
-              isMagic ? 'Email me a sign-in link' : isReset ? 'Send reset link' : isSignUp ? 'Create Account' : 'Sign In'
+              isMagic ? 'Email me a sign-in link' : isReset ? 'Send reset link' : 'Sign In'
             )}
           </Button>
 
@@ -257,17 +218,22 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
               </>
             )}
             <div>
-              <button
-                type="button"
-                onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}
-                className="text-sm text-bloc-blue hover:text-bloc-navy"
-              >
-                {isSignUp
-                  ? 'Already have an account? Sign in'
-                  : isPasswordless
-                    ? 'Back to sign in'
-                    : "Don't have an account? Sign up"}
-              </button>
+              {isPasswordless ? (
+                <button
+                  type="button"
+                  onClick={() => switchMode('signin')}
+                  className="text-sm text-bloc-blue hover:text-bloc-navy"
+                >
+                  Back to sign in
+                </button>
+              ) : (
+                <a
+                  href="/join"
+                  className="text-sm text-bloc-blue hover:text-bloc-navy"
+                >
+                  Not a member yet? Apply to join
+                </a>
+              )}
             </div>
           </div>
         </form>
