@@ -23,6 +23,7 @@ import {
 import { Card, Button, Input, useToast } from '@/components/ui';
 import { useCardScanner, ScannedCard } from '@/hooks/useCardScanner';
 import { useEvents } from '@/hooks/useEvents';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
 export function ScannerTab() {
@@ -364,6 +365,7 @@ export function ScannerTab() {
 // ---------------------------------------------------------------------------
 function ScanMatchPanel({ card }: { card: ScannedCard }) {
   const { events } = useEvents();
+  const { isAdmin, isDirector } = useAuth();
   const toast = useToast();
   const [eventId, setEventId] = useState('');
   const [message, setMessage] = useState('');
@@ -374,7 +376,7 @@ function ScanMatchPanel({ card }: { card: ScannedCard }) {
     (e) => new Date(e.starts_at).getTime() >= Date.now() && e.public_visible,
   );
 
-  const canInvite = card.guestId !== null && !!card.email;
+  const canInvite = (isAdmin || isDirector) && card.guestId !== null && !!card.email;
   const totalOthers = Math.max(0, card.scanCount - 1);
   const othersPhrase = totalOthers === 0
     ? 'first time anyone has scanned this card'

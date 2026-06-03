@@ -59,8 +59,6 @@ const baseTabs: TabConfig[] = [
   { id: 'dashboard', label: 'Dashboard',         icon: <LayoutDashboard size={18} />, component: <DashboardTab />,        group: 'core' },
   { id: 'leadership', label: 'Leadership',       icon: <Users size={18} />,           component: <LeadershipTab />,       group: 'core' },
   { id: 'members', label: 'Members',             icon: <Search size={18} />,          component: <MembersTab />,          group: 'core' },
-  { id: 'targets', label: 'Most Wanted',         icon: <Target size={18} />,          component: <TargetsTab />,          group: 'core' },
-  { id: 'pipeline', label: 'Guest Pipeline',     icon: <UserPlus size={18} />,        component: <PipelineTab />,         group: 'core' },
   { id: 'scanner', label: 'Card Scanner',        icon: <CreditCard size={18} />,      component: <ScannerTab />,          group: 'core' },
   { id: 'guide', label: 'Membership Guide',      icon: <BookOpen size={18} />,        component: <MembershipGuideTab />,  group: 'core' },
 ];
@@ -109,11 +107,13 @@ function DashboardContent() {
     const all: TabConfig[] = [...baseTabs];
     if (isAdmin || isDirector) {
       all.push(
-        { id: 'intake', label: 'Guest Inbox',     icon: <Inbox size={18} />,       component: <IntakeGuestsTab />, group: 'guestflow' },
-        { id: 'events', label: 'Events',          icon: <CalendarDays size={18} />, component: <EventsTab />,       group: 'guestflow' },
-        { id: 'qr', label: 'QR Codes',            icon: <QrCode size={18} />,      component: <QrTokensTab />,     group: 'guestflow' },
-        { id: 'roster', label: 'Roster',          icon: <Users2 size={18} />,      component: <RosterTab />,       group: 'guestflow' },
-        { id: 'seats', label: 'Category Seats',   icon: <Grid3x3 size={18} />,     component: <SeatMapTab />,      group: 'guestflow' },
+        { id: 'targets', label: 'Most Wanted',     icon: <Target size={18} />,      component: <TargetsTab />,     group: 'core' },
+        { id: 'pipeline', label: 'Guest Pipeline', icon: <UserPlus size={18} />,    component: <PipelineTab />,    group: 'core' },
+        { id: 'intake', label: 'Guest Inbox',      icon: <Inbox size={18} />,       component: <IntakeGuestsTab />, group: 'guestflow' },
+        { id: 'events', label: 'Events',           icon: <CalendarDays size={18} />, component: <EventsTab />,      group: 'guestflow' },
+        { id: 'qr', label: 'QR Codes',             icon: <QrCode size={18} />,      component: <QrTokensTab />,     group: 'guestflow' },
+        { id: 'roster', label: 'Roster',           icon: <Users2 size={18} />,      component: <RosterTab />,       group: 'guestflow' },
+        { id: 'seats', label: 'Category Seats',    icon: <Grid3x3 size={18} />,     component: <SeatMapTab />,      group: 'guestflow' },
       );
     }
     all.push({ id: 'me', label: 'My Profile', icon: <UserCircle size={18} />, component: <MyProfileTab />, group: 'personal' });
