@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { PASSWORD_MIN_LENGTH, validatePasswordLength } from '@/lib/auth/password';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -58,8 +59,8 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       return;
     }
 
-    if (password.length < 6) {
-      setLocalError('Password must be at least 6 characters');
+    if (!validatePasswordLength(password)) {
+      setLocalError(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
       return;
     }
 

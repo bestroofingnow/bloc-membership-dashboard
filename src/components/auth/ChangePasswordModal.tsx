@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Lock, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
+import { PASSWORD_MIN_LENGTH, validatePasswordLength } from '@/lib/auth/password';
 
 export function ChangePasswordModal() {
   const [newPassword, setNewPassword] = useState('');
@@ -16,8 +17,8 @@ export function ChangePasswordModal() {
     e.preventDefault();
     setError(null);
 
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!validatePasswordLength(newPassword)) {
+      setError(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
       return;
     }
 
@@ -43,7 +44,7 @@ export function ChangePasswordModal() {
               <Lock className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h2 className="text-3xl font-bold text-bloc-navy">Welcome to BLOC!</h2>
+          <h2 className="text-3xl font-bold text-bloc-navy">Set a New Password</h2>
           <p className="mt-2 text-gray-600">
             {profile?.fullName ? `Hi ${profile.fullName}, please` : 'Please'} set a new password to continue.
           </p>
@@ -86,7 +87,7 @@ export function ChangePasswordModal() {
                   autoFocus
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-500">Must be at least 6 characters</p>
+              <p className="mt-1 text-xs text-gray-500">Must be at least {PASSWORD_MIN_LENGTH} characters</p>
             </div>
 
             <div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Lock, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { PASSWORD_MIN_LENGTH, validatePasswordLength } from '@/lib/auth/password';
 
 /**
  * Password reset callback. Supabase recovery emails redirect here with a
@@ -40,8 +41,8 @@ export default function ResetPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!validatePasswordLength(newPassword)) {
+      setError(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -116,7 +117,7 @@ export default function ResetPasswordPage() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue"
-                  placeholder="At least 6 characters"
+                  placeholder={`At least ${PASSWORD_MIN_LENGTH} characters`}
                   autoComplete="new-password"
                   autoFocus
                   required

@@ -245,13 +245,17 @@ function DashboardContent() {
         {/* Navigation - Desktop */}
         <nav className="hidden sm:block border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex -mb-px overflow-x-auto">
+            <div className="flex -mb-px overflow-x-auto" role="tablist" aria-label="Dashboard sections">
               {tabs.map((tab, i) => (
                 <div key={tab.id} className="flex items-center">
                   {groupBoundaries.has(i) && (
                     <span aria-hidden="true" className="mx-1 h-6 w-px bg-white/20 self-center" />
                   )}
                   <button
+                    role="tab"
+                    id={`tab-${tab.id}`}
+                    aria-selected={activeTab === tab.id}
+                    aria-controls="tabpanel"
                     onClick={() => setActiveTab(tab.id)}
                     title={`${GROUP_LABEL[tab.group]} · ${tab.label}`}
                     className={`flex items-center gap-2 px-3 lg:px-4 py-4 border-b-2 transition-all font-medium text-sm whitespace-nowrap ${
@@ -394,7 +398,9 @@ function DashboardContent() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {currentTab?.component}
+        <div id="tabpanel" role="tabpanel" aria-labelledby={currentTab ? `tab-${currentTab.id}` : undefined}>
+          {currentTab?.component}
+        </div>
         <BackToTop />
       </main>
 
