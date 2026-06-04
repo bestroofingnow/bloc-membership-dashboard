@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { linkLead } from '@/lib/leads/linkLead';
 
 export const runtime = 'nodejs';
 
@@ -269,6 +270,23 @@ Return ONLY the JSON object, no other text.`,
         }
       }
 
+      // Link the guests row (new OR pre-existing) into the one lead funnel.
+      // Existing-member matches have no targetGuestId, so this is skipped for them.
+      if (targetGuestId) {
+        await linkLead(supabase, {
+          source_table: 'guests',
+          source_id: targetGuestId,
+          email: emailNormalized,
+          name: inputName || extractedData.name || null,
+          company: inputCompany || extractedData.company || null,
+          phone: extractedData.phone || null,
+          source: 'card_scan',
+          stage: 'new',
+          actor_profile_id: scannedByProfileId,
+          note: 'card scan → guest',
+        });
+      }
+
       // 4. Insert the scan record (with all the resolved IDs)
       const { data: scanRow, error: scanErr } = await supabase
         .from('business_card_scans')
@@ -294,6 +312,28 @@ Return ONLY the JSON object, no other text.`,
         console.error('Failed to save scan:', scanErr);
       } else {
         scanId = scanRow?.id || null;
+      }
+
+      // Link the scan row into the lead funnel. For an existing-member match we record
+      // a networking touch with matched_member_id but NO forward pipeline lead beyond
+      // this scan (preserves the scanner's existing-member guard). Email-less scans
+      // still get their own lead so nothing is dropped.
+      if (scanId) {
+        await linkLead(supabase, {
+          source_table: 'business_card_scans',
+          source_id: scanId,
+          email: emailNormalized,
+          name: extractedData.name || null,
+          company: extractedData.company || null,
+          phone: extractedData.phone || null,
+          source: 'card_scan',
+          stage: 'new',
+          matched_member_id: targetMemberId,
+          actor_profile_id: scannedByProfileId,
+          note: matchType === 'existing_member'
+            ? 'networking touch (existing member)'
+            : 'card scan',
+        });
       }
 
       // 5. Count total scans of this same email (including this one)
