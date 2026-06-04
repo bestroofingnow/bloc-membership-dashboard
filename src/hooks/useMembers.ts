@@ -7,6 +7,7 @@ import { Member, ChapterName } from '@/types';
 import { members as staticMembers } from '@/data/members';
 import { chooseInitialData, resolveFetchResult, isDemoMode } from '@/lib/demo-mode';
 import { summarizeMembers } from '@/lib/members/summary';
+import { directoryRowToMember, type DirectoryRow } from '@/lib/members/directory';
 
 function transformDbToMember(row: any): Member {
   return {
@@ -47,8 +48,13 @@ export function useMembers() {
 
     setLoading(true);
     try {
+      // STEP B: read the column-nulling member_directory view (migration 024)
+      // instead of the raw members table. Same row count as members, so the
+      // anti-fabrication guard (resolveFetchResult) still distinguishes a real
+      // empty result from demo mode — personal columns just arrive NULL for
+      // viewers who aren't the owner/staff and haven't been opted in.
       const { data, error: fetchError } = await supabase
-        .from('members')
+        .from('member_directory')
         .select('*')
         .order('name', { ascending: true });
 
@@ -56,7 +62,7 @@ export function useMembers() {
         setError(fetchError.message);
         console.error('Error fetching members:', fetchError);
       } else {
-        const rows = (data ?? []).map(transformDbToMember);
+        const rows = (data ?? []).map((r) => directoryRowToMember(r as DirectoryRow));
         setMembers(resolveFetchResult(rows, staticMembers, { isConfigured, isDemo }));
       }
     } catch (err) {
