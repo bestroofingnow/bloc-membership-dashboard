@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { linkLead } from '@/lib/leads/linkLead';
 
 // Simple in-memory rate limiting
 const submissions = new Map<string, number>();
@@ -67,25 +68,42 @@ export async function POST(request: Request) {
     );
   }
 
-  const { error } = await supabase.from('public_signups').insert([
-    {
-      name: body.name.trim(),
-      company: body.company.trim(),
-      industry: body.industry?.trim() || null,
-      email: body.email?.trim() || null,
-      phone: body.phone?.trim() || null,
-      referral_source: body.referralSource?.trim() || null,
-      notes: body.notes?.trim() || null,
-    },
-  ]);
+  const { data: inserted, error } = await supabase
+    .from('public_signups')
+    .insert([
+      {
+        name: body.name.trim(),
+        company: body.company.trim(),
+        industry: body.industry?.trim() || null,
+        email: body.email?.trim() || null,
+        phone: body.phone?.trim() || null,
+        referral_source: body.referralSource?.trim() || null,
+        notes: body.notes?.trim() || null,
+      },
+    ])
+    .select('id')
+    .single();
 
-  if (error) {
+  if (error || !inserted) {
     console.error('Failed to insert signup:', error);
     return NextResponse.json(
       { error: 'Failed to submit. Please try again.' },
       { status: 500 }
     );
   }
+
+  // Non-blocking: link into the one lead funnel. Lead-only (never 'member') — invite-only.
+  await linkLead(supabase, {
+    source_table: 'public_signups',
+    source_id: inserted.id,
+    email: body.email?.trim() || null,
+    name: body.name.trim(),
+    company: body.company.trim(),
+    phone: body.phone?.trim() || null,
+    source: 'public_signup',
+    stage: 'applied',
+    note: 'web join form',
+  });
 
   return NextResponse.json({ success: true });
 }
