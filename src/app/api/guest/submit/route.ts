@@ -10,6 +10,8 @@ import { buildIcs } from '@/lib/guest/ics';
 import { mintMagic } from '@/lib/guest/magic';
 import { ipFromHeaders, rateLimit } from '@/lib/guest/rate-limit';
 import { verifyToken } from '@/lib/guest/tokens';
+import { linkLead } from '@/lib/leads/linkLead';
+import { mapRsvpStatusToStage } from '@/lib/leads/stage';
 
 const submitSchema = z.object({
   token: z.string(),
@@ -192,6 +194,37 @@ export async function POST(req: Request) {
       })),
     });
     if (logErr) console.error('intake_conflict_log insert', logErr);
+  }
+
+  // 5b) Link the intake_guest + intake_rsvp into the one lead funnel (non-blocking).
+  // RSVP status projects onto the canonical stage; attribution comes from the
+  // AUTHORITATIVE QR token (tokenRow.invited_by_member_id), never the body.
+  {
+    const guestStage = mapRsvpStatusToStage('registered');
+    await linkLead(sb, {
+      source_table: 'intake_guests',
+      source_id: guest.id,
+      email: p.email.trim(),
+      name: `${p.first_name.trim()} ${p.last_name.trim()}`,
+      company: p.business_name.trim(),
+      source: 'qr_rsvp',
+      stage: guestStage,
+      invited_by_member_id: authoritativeInvitedByMemberId ?? null,
+      matched_member_id: existingMember?.id ?? null,
+      note: 'qr rsvp (intake_guest)',
+    });
+    await linkLead(sb, {
+      source_table: 'intake_rsvps',
+      source_id: rsvpId,
+      email: p.email.trim(),
+      name: `${p.first_name.trim()} ${p.last_name.trim()}`,
+      company: p.business_name.trim(),
+      source: 'qr_rsvp',
+      stage: guestStage,
+      invited_by_member_id: authoritativeInvitedByMemberId ?? null,
+      matched_member_id: existingMember?.id ?? null,
+      note: 'qr rsvp (intake_rsvp)',
+    });
   }
 
   // 6) Magic link — preserve the existing one if it's still valid, so prior
