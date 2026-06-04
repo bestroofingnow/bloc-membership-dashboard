@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { User, Eye, EyeOff, AlertCircle, RotateCcw } from 'lucide-react';
 import { useMyMember } from '@/hooks/useMyMember';
+import { useMyFieldVisibility } from '@/hooks/useMyFieldVisibility';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui';
 import type { ChapterName } from '@/types';
@@ -10,9 +11,26 @@ import type { ChapterName } from '@/types';
 export function MyProfileTab() {
   const { profile } = useAuth();
   const { member, visibilities, loading, error, setMyVisibility, refresh } = useMyMember();
+  const { flags, setMyFlags } = useMyFieldVisibility();
   const [busy, setBusy] = useState<string | null>(null);
+  const [fieldBusy, setFieldBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const toast = useToast();
+
+  async function toggleField(field: 'show_mobile_phone' | 'show_address' | 'show_birthday', next: boolean) {
+    setFieldBusy(field);
+    setActionError(null);
+    try {
+      await setMyFlags({ ...flags, [field]: next });
+      toast.success(next ? 'Field is now visible to other members' : 'Field is now hidden from other members');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setActionError(msg);
+      toast.error(`Update failed: ${msg}`);
+    } finally {
+      setFieldBusy(null);
+    }
+  }
 
   async function toggle(chapter: ChapterName, next: boolean) {
     setBusy(chapter);
@@ -150,6 +168,46 @@ export function MyProfileTab() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="rounded border bg-white p-4 space-y-3">
+        <div>
+          <h3 className="text-sm uppercase tracking-wide text-gray-500">Personal info visibility</h3>
+          <p className="text-xs text-gray-600 mt-1">
+            Your mobile phone, home address, and birthday are hidden from other members by default.
+            Turn on any field to share it in the member directory. Your business email and phone are always shown.
+          </p>
+        </div>
+        {([
+          { key: 'show_mobile_phone', label: 'Mobile phone' },
+          { key: 'show_address', label: 'Home address' },
+          { key: 'show_birthday', label: 'Birthday' },
+        ] as const).map((f) => {
+          const on = flags[f.key];
+          return (
+            <div key={f.key} className="flex items-center justify-between rounded border p-3">
+              <div>
+                <div className="font-medium">{f.label}</div>
+                <div className="text-xs text-gray-500">
+                  {on ? 'Visible to other logged-in members.' : 'Hidden from other members (directors/admins can still see it).'}
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={fieldBusy === f.key}
+                onClick={() => toggleField(f.key, !on)}
+                aria-pressed={on}
+                className={`inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm ${
+                  on
+                    ? 'border-green-200 text-green-700 bg-green-50 hover:bg-green-100'
+                    : 'border-gray-300 text-gray-700 bg-gray-50 hover:bg-gray-100'
+                } disabled:opacity-50`}
+              >
+                {on ? <><Eye size={14} /> Shared</> : <><EyeOff size={14} /> Hidden</>}
+              </button>
+            </div>
+          );
+        })}
       </section>
     </div>
   );
