@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerSupabase } from '@/lib/guest/supabase-server';
 import { requireDirector } from '@/lib/admin-auth';
+import { linkLead } from '@/lib/leads/linkLead';
 
 const patchSchema = z.object({
   status: z.enum(['registered', 'attended', 'no_show', 'canceled']).optional(),
@@ -47,6 +48,36 @@ export async function PATCH(req: Request, { params }: Props) {
   if (upErr) {
     console.error('intake_rsvps update', upErr);
     return NextResponse.json({ error: 'db_error' }, { status: 500 });
+  }
+
+  // When marked attended, advance the linked lead forward-only to 'attended'.
+  // link_lead is idempotent and re-uses the lead already linked to this rsvp row;
+  // non-blocking so a spine hiccup never fails the status update.
+  if (parsed.data.status === 'attended') {
+    const { data: rsvpRow } = await sb
+      .from('intake_rsvps')
+      .select('id,guest_id,invited_by_member_id,intake_guests!inner(email,first_name,last_name,business_name)')
+      .eq('id', id)
+      .maybeSingle();
+    const ig = (rsvpRow as unknown as {
+      guest_id: string;
+      invited_by_member_id: string | null;
+      intake_guests: { email: string; first_name: string; last_name: string; business_name: string };
+    } | null);
+    if (ig) {
+      await linkLead(sb, {
+        source_table: 'intake_rsvps',
+        source_id: id,
+        email: ig.intake_guests.email,
+        name: `${ig.intake_guests.first_name} ${ig.intake_guests.last_name}`,
+        company: ig.intake_guests.business_name,
+        source: 'qr_rsvp',
+        stage: 'attended',
+        invited_by_member_id: ig.invited_by_member_id ?? null,
+        actor_profile_id: profile.id,
+        note: 'rsvp marked attended',
+      });
+    }
   }
 
   return NextResponse.json({ ok: true });
