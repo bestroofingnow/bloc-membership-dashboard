@@ -158,6 +158,12 @@ export function EventsTab() {
         <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
       )}
 
+      {!loading && events.length === 0 && (
+        <div className="rounded border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">
+          No events yet.{canEdit ? ' Click “New event” to add your first one.' : ''}
+        </div>
+      )}
+
       <Section title="Upcoming" events={upcoming} canEdit={canEdit} onEdit={openEdit} onDelete={remove} onToggle={toggleVisibility} loading={loading} />
       <Section title="Past" events={past} canEdit={canEdit} onEdit={openEdit} onDelete={remove} onToggle={toggleVisibility} loading={loading} dim />
 

@@ -32,8 +32,8 @@ export function ProgressBar({
   size = 'md',
   color = 'blue',
 }: ProgressBarProps) {
-  const percentage = Math.min((current / target) * 100, 100);
-  const isComplete = current >= target;
+  const percentage = target > 0 ? Math.min((current / target) * 100, 100) : 0;
+  const isComplete = target > 0 && current >= target;
 
   return (
     <div className="w-full">
@@ -59,6 +59,11 @@ export function ProgressBar({
           'w-full bg-slate-200 rounded-full overflow-hidden',
           sizeStyles[size]
         )}
+        role="progressbar"
+        aria-valuenow={Math.round(percentage)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={label ?? 'Progress'}
       >
         <div
           className={clsx(

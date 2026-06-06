@@ -285,6 +285,9 @@ export function DashboardTab() {
             Upcoming Events
           </CardTitle>
           <div className="mt-6 space-y-3">
+            {upcomingEvents.length === 0 && (
+              <p className="text-sm text-slate-500">No upcoming events.</p>
+            )}
             {upcomingEvents.slice(0, 4).map((event, index) => (
               <div
                 key={index}
