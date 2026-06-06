@@ -69,20 +69,24 @@ function BoardMemberCard({
       </div>
 
       <div className="mt-4 pt-4 border-t border-slate-100 flex gap-3">
-        <a
-          href={`mailto:${member.email}`}
-          className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-bloc-blue transition-colors"
-        >
-          <Mail size={14} />
-          <span>Email</span>
-        </a>
-        <a
-          href={`tel:${member.phone}`}
-          className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-bloc-blue transition-colors"
-        >
-          <Phone size={14} />
-          <span>{member.phone}</span>
-        </a>
+        {member.email && (
+          <a
+            href={`mailto:${member.email}`}
+            className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-bloc-blue transition-colors"
+          >
+            <Mail size={14} />
+            <span>Email</span>
+          </a>
+        )}
+        {member.phone && (
+          <a
+            href={`tel:${member.phone}`}
+            className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-bloc-blue transition-colors"
+          >
+            <Phone size={14} />
+            <span>{member.phone}</span>
+          </a>
+        )}
       </div>
     </Card>
   );

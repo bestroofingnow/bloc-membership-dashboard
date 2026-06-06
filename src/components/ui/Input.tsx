@@ -74,6 +74,7 @@ export function SearchInput({
   onSearch,
   onChange,
   value,
+  className,
   ...props
 }: SearchInputProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,6 +100,7 @@ export function SearchInput({
       value={value}
       onChange={handleChange}
       onClear={handleClear}
+      className={clsx('bloc-search-clearable', className)}
       {...props}
     />
   );
