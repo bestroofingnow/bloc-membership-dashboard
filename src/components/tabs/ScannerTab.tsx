@@ -471,6 +471,7 @@ function ScanMatchPanel({ card }: { card: ScannedCard }) {
             value={eventId}
             onChange={(e) => setEventId(e.target.value)}
             disabled={sending || sent}
+            aria-label="Choose an event to invite them to"
             className="w-full rounded border border-slate-300 p-2 text-sm disabled:opacity-50"
           >
             <option value="">— Pick an upcoming lunch / event —</option>

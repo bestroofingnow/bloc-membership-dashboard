@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarPlus, Share2, QrCode, X } from 'lucide-react';
 import { QrImage } from './QrImage';
 import { useToast } from './Toast';
@@ -21,6 +21,16 @@ export function LunchLink({ chapter, url }: Props) {
   const [qrOpen, setQrOpen] = useState(false);
   const { show } = useToast();
   const title = `BLOC ${chapter} Lunch`;
+
+  // Close the QR popover on Escape for keyboard users.
+  useEffect(() => {
+    if (!qrOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setQrOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [qrOpen]);
 
   const handleShare = async () => {
     const result = await shareLink(url, title);

@@ -72,10 +72,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
+  const [paused, setPaused] = useState(false);
   useEffect(() => {
+    if (paused) return;
     const id = setTimeout(onDismiss, toast.durationMs);
     return () => clearTimeout(id);
-  }, [toast.durationMs, onDismiss]);
+  }, [toast.durationMs, onDismiss, paused]);
 
   const colors =
     toast.kind === 'success' ? 'border-green-200 bg-green-50 text-green-800' :
@@ -85,7 +87,12 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
   const Icon = toast.kind === 'success' ? CheckCircle2 : toast.kind === 'error' ? AlertCircle : Info;
 
   return (
-    <div className={`flex items-start gap-2 rounded-lg border px-3 py-2 shadow-sm ${colors}`} role="status">
+    <div
+      className={`flex items-start gap-2 rounded-lg border px-3 py-2 shadow-sm ${colors}`}
+      role="status"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
       <Icon size={16} className="shrink-0 mt-0.5" />
       <div className="flex-1 text-sm">{toast.message}</div>
       <button
