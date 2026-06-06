@@ -302,6 +302,7 @@ export function MembersTab() {
           <select
             value={chapterFilter}
             onChange={(e) => setChapterFilter(e.target.value as ChapterFilter)}
+            aria-label="Filter members by chapter"
             className="px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
           >
             {chapterFilters.map((f) => (
@@ -325,10 +326,13 @@ export function MembersTab() {
 
       {/* Results Count */}
       <p className="text-sm text-slate-500">
-        Showing {filteredMembers.length} members
+        Showing {filteredMembers.length} {filteredMembers.length === 1 ? 'member' : 'members'}
         {chapterFilter === 'after_hours'
           ? ' on the After Hours wait list'
           : chapterFilter !== 'all' && ` in ${chapterFilter}`}
+        {(searchQuery || chapterFilter !== 'all') &&
+          filteredMembers.length !== members.length &&
+          ` of ${members.length} total`}
       </p>
 
       {/* Members Table */}

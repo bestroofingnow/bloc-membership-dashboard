@@ -83,6 +83,12 @@
   @apply outline-none ring-2 ring-bloc-blue ring-offset-2;
 }
 
+/* Hide the browser's native search clear so only our consistent × button shows */
+input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 /* Smooth transitions */
 * {
   @apply transition-colors duration-150;
