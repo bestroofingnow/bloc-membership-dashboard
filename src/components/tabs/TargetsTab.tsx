@@ -201,7 +201,9 @@ export function TargetsTab() {
               {/* Category Header */}
               <div className="flex items-center justify-between p-5 hover:bg-slate-50 transition-colors">
                 <button
+                  type="button"
                   onClick={() => toggleCategory(category.name)}
+                  aria-expanded={isExpanded}
                   className="flex items-center gap-3 flex-1"
                 >
                   <div className="p-2 bg-bloc-blue/10 rounded-lg">
@@ -212,7 +214,7 @@ export function TargetsTab() {
                       {category.name}
                     </h3>
                     <p className="text-sm text-slate-500">
-                      {category.targets.length} targets &middot;{' '}
+                      {category.targets.length} {category.targets.length === 1 ? 'target' : 'targets'} &middot;{' '}
                       {categoryAssigned} assigned
                     </p>
                   </div>

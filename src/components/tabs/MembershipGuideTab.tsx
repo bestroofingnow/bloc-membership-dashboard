@@ -51,7 +51,9 @@ function Section({
   return (
     <Card className={`border-l-4 ${accentStyles[accent]} overflow-hidden`} padding="none">
       <button
+        type="button"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
         className="w-full flex items-center gap-3 p-5 text-left hover:bg-slate-50 transition-colors"
       >
         <span className={iconStyles[accent]}>{icon}</span>
