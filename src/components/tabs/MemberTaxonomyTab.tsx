@@ -142,6 +142,7 @@ export function MemberTaxonomyTab() {
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value as Filter)}
+            aria-label="Filter members"
             className="rounded border px-2 py-1"
           >
             <option value="all">All members</option>

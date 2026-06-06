@@ -73,7 +73,12 @@ export function SeatMapTab() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={exportCsv} className="inline-flex items-center gap-1 rounded border px-3 py-1.5 text-sm hover:bg-gray-50">
+          <button
+            onClick={exportCsv}
+            disabled={filtered.length === 0}
+            title={filtered.length === 0 ? 'No seats to export' : 'Export the current view to CSV'}
+            className="inline-flex items-center gap-1 rounded border px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <Download size={14} /> Export CSV
           </button>
           <button onClick={refresh} disabled={loading} className="rounded border px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50">

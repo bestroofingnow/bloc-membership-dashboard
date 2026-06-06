@@ -7,6 +7,7 @@ import { useMembers } from '@/hooks/useMembers';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { ChapterName, Member } from '@/types';
+import { csvRow } from '@/lib/csv';
 
 type ChapterFilter = ChapterName | 'all' | 'after_hours';
 
@@ -178,13 +179,12 @@ export function MembersTab() {
   }, [members, searchQuery, chapterFilter]);
 
   const handleExport = () => {
-    // Quote every field and escape embedded quotes so values containing commas
-    // (e.g. "Acme, Inc.") don't break the CSV columns.
-    const esc = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    // Use the shared, RFC 4180-compliant + unit-tested CSV helper so commas,
+    // quotes, and newlines in names/companies never corrupt the columns.
     const csv = [
-      ['Name', 'Company', 'Chapter', 'Industry'].map(esc).join(','),
+      csvRow(['Name', 'Company', 'Chapter', 'Industry']),
       ...filteredMembers.map((m) =>
-        [m.name, m.company, m.memberType === 'after_hours' ? 'After Hours' : (m.chapter ?? ''), m.industry].map(esc).join(',')
+        csvRow([m.name, m.company, m.memberType === 'after_hours' ? 'After Hours' : (m.chapter ?? ''), m.industry])
       ),
     ].join('\n');
 
