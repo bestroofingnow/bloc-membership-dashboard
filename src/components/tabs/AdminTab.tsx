@@ -111,6 +111,7 @@ function UserCard({
             value={profile.role}
             onChange={(e) => handleRoleChange(e.target.value as UserRole)}
             disabled={updating || isCurrentUser}
+            aria-label={`Role for ${profile.fullName || 'this user'}`}
             className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none disabled:opacity-50"
           >
             <option value="member">Member (View Only)</option>
@@ -123,6 +124,7 @@ function UserCard({
               value={profile.chapter || ''}
               onChange={(e) => handleChapterChange(e.target.value)}
               disabled={updating}
+              aria-label={`Chapter for ${profile.fullName || 'this user'}`}
               className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none disabled:opacity-50"
             >
               <option value="">No Chapter</option>

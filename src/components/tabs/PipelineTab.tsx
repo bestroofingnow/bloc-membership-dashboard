@@ -57,12 +57,12 @@ function SignupCard({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h4 className="font-bold text-slate-900 truncate">{signup.name}</h4>
+            <h4 className="font-bold text-slate-900 truncate" title={signup.name}>{signup.name}</h4>
             <Badge variant="warning" size="sm">New</Badge>
           </div>
           <div className="flex items-center gap-1.5 text-sm text-slate-500 mt-0.5">
             <Building2 size={12} />
-            <span className="truncate">{signup.company}</span>
+            <span className="truncate" title={signup.company}>{signup.company}</span>
           </div>
           <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-slate-400">
             {signup.industry && (

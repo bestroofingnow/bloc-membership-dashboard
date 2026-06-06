@@ -628,7 +628,7 @@ export function MembersTab() {
               {detailMember.email && (
                 <a href={`mailto:${detailMember.email}`} className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 hover:border-bloc-blue hover:bg-blue-50/50 transition-colors">
                   <Mail size={16} className="text-bloc-blue flex-shrink-0" />
-                  <span className="text-sm text-slate-700 truncate">{detailMember.email}</span>
+                  <span className="text-sm text-slate-700 truncate" title={detailMember.email}>{detailMember.email}</span>
                 </a>
               )}
               {detailMember.phone && (
@@ -646,7 +646,7 @@ export function MembersTab() {
               {detailMember.website && (
                 <a href={detailMember.website.startsWith('http') ? detailMember.website : `https://${detailMember.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 hover:border-bloc-blue hover:bg-blue-50/50 transition-colors">
                   <Globe size={16} className="text-bloc-blue flex-shrink-0" />
-                  <span className="text-sm text-slate-700 truncate">{detailMember.website}</span>
+                  <span className="text-sm text-slate-700 truncate" title={detailMember.website}>{detailMember.website}</span>
                 </a>
               )}
               {detailMember.address && (
