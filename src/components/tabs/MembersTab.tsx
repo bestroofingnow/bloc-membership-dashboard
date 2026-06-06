@@ -178,10 +178,13 @@ export function MembersTab() {
   }, [members, searchQuery, chapterFilter]);
 
   const handleExport = () => {
+    // Quote every field and escape embedded quotes so values containing commas
+    // (e.g. "Acme, Inc.") don't break the CSV columns.
+    const esc = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const csv = [
-      ['Name', 'Company', 'Chapter', 'Industry'].join(','),
+      ['Name', 'Company', 'Chapter', 'Industry'].map(esc).join(','),
       ...filteredMembers.map((m) =>
-        [m.name, m.company, m.memberType === 'after_hours' ? 'After Hours' : (m.chapter ?? ''), m.industry].join(',')
+        [m.name, m.company, m.memberType === 'after_hours' ? 'After Hours' : (m.chapter ?? ''), m.industry].map(esc).join(',')
       ),
     ].join('\n');
 
@@ -311,7 +314,12 @@ export function MembersTab() {
               </option>
             ))}
           </select>
-          <Button variant="secondary" onClick={handleExport}>
+          <Button
+            variant="secondary"
+            onClick={handleExport}
+            disabled={filteredMembers.length === 0}
+            title={filteredMembers.length === 0 ? 'No members to export' : 'Export the current list to CSV'}
+          >
             <Download size={16} className="mr-2" />
             Export
           </Button>
