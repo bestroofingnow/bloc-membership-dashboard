@@ -176,6 +176,13 @@ function DashboardContent() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Skip link: lets keyboard users jump past the nav straight to content */}
+      <a
+        href="#tabpanel"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2 focus:text-bloc-navy focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
       {/* Header */}
       <header className="bg-gradient-to-r from-bloc-navy to-bloc-blue text-white shadow-lg sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

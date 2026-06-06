@@ -107,8 +107,8 @@ function StepItem({
 function BulletList({ items }: { items: string[] }) {
   return (
     <ul className="space-y-2 my-2">
-      {items.map((item, i) => (
-        <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+      {items.map((item) => (
+        <li key={item} className="flex items-start gap-2 text-sm text-slate-700">
           <ChevronRight size={14} className="text-slate-400 mt-0.5 shrink-0" />
           <span>{item}</span>
         </li>

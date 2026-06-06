@@ -585,7 +585,7 @@ export function MembersTab() {
             {/* Header */}
             <div className="flex items-start gap-4">
               <div className="w-16 h-16 rounded-full bg-bloc-blue/10 flex items-center justify-center text-bloc-blue text-xl font-bold flex-shrink-0">
-                {detailMember.name.split(' ').map((n) => n[0]).join('')}
+                {detailMember.name.split(' ').filter(Boolean).slice(0, 2).map((n) => n[0]?.toUpperCase() ?? '').join('')}
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-xl font-bold text-slate-900">{detailMember.name}</h3>
