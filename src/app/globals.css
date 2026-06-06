@@ -95,6 +95,18 @@
   @apply transition-colors duration-150;
 }
 
+/* Respect users who prefer reduced motion: near-instant animations/transitions */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Print styles */
 @media print {
   .no-print {

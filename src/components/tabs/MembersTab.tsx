@@ -380,7 +380,9 @@ export function MembersTab() {
                       <div className="w-10 h-10 rounded-full bg-bloc-blue/10 flex items-center justify-center text-bloc-blue font-semibold">
                         {member.name
                           .split(' ')
-                          .map((n) => n[0])
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .map((n) => n[0]?.toUpperCase() ?? '')
                           .join('')}
                       </div>
                       <div>
