@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimit } from '@/lib/guest/rate-limit';
 
-const GHL_WEBHOOK_URL = 'https://services.leadconnectorhq.com/hooks/djoUBrlP5ZcNEKrztBzw/webhook-trigger/b7685c53-1b04-43df-9913-d97d0aa42f0d';
+// Prefer an env var; fall back to the previously-hardcoded hook so prod keeps working.
+const GHL_WEBHOOK_URL = process.env.GHL_WEBHOOK_URL || 'https://services.leadconnectorhq.com/hooks/djoUBrlP5ZcNEKrztBzw/webhook-trigger/b7685c53-1b04-43df-9913-d97d0aa42f0d';
 
 interface ExportPayload {
   scanId?: string;
@@ -26,6 +28,29 @@ function splitName(fullName: string): { firstName: string; lastName: string } {
 }
 
 export async function POST(request: Request) {
+  // Require a logged-in member — this fires a CRM webhook and must not be public.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
+  }
+  const authHeader = request.headers.get('authorization') ?? '';
+  const bearerToken = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : '';
+  if (!bearerToken) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+  const authClient = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: authData, error: authErr } = await authClient.auth.getUser(bearerToken);
+  if (authErr || !authData?.user?.id) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+  const okExport = await rateLimit({ bucket: `scan-export:${authData.user.id}`, limit: 30, windowSeconds: 60 });
+  if (!okExport) {
+    return NextResponse.json({ error: 'Too many exports. Please wait a minute.' }, { status: 429 });
+  }
+
   let body: ExportPayload;
   try {
     body = await request.json();
@@ -80,16 +105,11 @@ export async function POST(request: Request) {
 
     // Mark as exported in Supabase if we have a scanId
     if (body.scanId) {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-      if (supabaseUrl && serviceRoleKey) {
-        const supabase = createClient(supabaseUrl, serviceRoleKey);
-        await supabase
-          .from('business_card_scans')
-          .update({ exported_to_crm: true, exported_at: new Date().toISOString() })
-          .eq('id', body.scanId);
-      }
+      const supabase = createClient(supabaseUrl, serviceRoleKey);
+      await supabase
+        .from('business_card_scans')
+        .update({ exported_to_crm: true, exported_at: new Date().toISOString() })
+        .eq('id', body.scanId);
     }
 
     return NextResponse.json({ success: true, message: 'Contact exported to GoHighLevel CRM' });

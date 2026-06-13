@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { linkLead } from '@/lib/leads/linkLead';
+import { rateLimit } from '@/lib/guest/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -23,6 +24,33 @@ export async function POST(request: Request) {
       { error: 'Anthropic API key not configured' },
       { status: 500 }
     );
+  }
+
+  // Require a logged-in member BEFORE the paid Anthropic call. The scanner is a
+  // member/staff tool, not a public endpoint — without this gate an anonymous
+  // caller with the URL could run up an unbounded AI bill.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
+  }
+  const authHeader = request.headers.get('authorization') ?? '';
+  const bearerToken = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : '';
+  if (!bearerToken) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+  const authClient = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: authData, error: authErr } = await authClient.auth.getUser(bearerToken);
+  const scannedByProfileId = authData?.user?.id ?? null;
+  if (authErr || !scannedByProfileId) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+  // Per-user rate limit so one account can't spam the paid vision API.
+  const okScan = await rateLimit({ bucket: `scan:${scannedByProfileId}`, limit: 20, windowSeconds: 60 });
+  if (!okScan) {
+    return NextResponse.json({ error: 'Too many scans. Please wait a minute.' }, { status: 429 });
   }
 
   let imageBase64: string;
@@ -161,10 +189,8 @@ Return ONLY the JSON object, no other text.`,
       );
     }
 
-    // Save to Supabase if configured
+    // Save to Supabase (config + caller already validated at the top).
     let scanId: string | null = null;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     type MatchType = 'new_guest' | 'existing_guest' | 'existing_member' | 'no_email' | 'no_persistence';
     let match: {
@@ -186,15 +212,7 @@ Return ONLY the JSON object, no other text.`,
     if (supabaseUrl && serviceRoleKey) {
       const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-      // Identify the caller (the member doing the scan) from the Bearer token
-      let scannedByProfileId: string | null = null;
-      const auth = request.headers.get('authorization') ?? '';
-      const bearerToken = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : '';
-      if (bearerToken) {
-        const { data: userData } = await supabase.auth.getUser(bearerToken);
-        scannedByProfileId = userData?.user?.id ?? null;
-      }
-
+      // Caller (scannedByProfileId) was already verified at the top of the handler.
       const emailNormalized = (extractedData.email || '').trim().toLowerCase() || null;
 
       // Match resolution: email → member > existing guest > new guest > unmatchable
