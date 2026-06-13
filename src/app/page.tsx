@@ -139,7 +139,13 @@ function DashboardContent() {
     return boundaries;
   }, [tabs]);
 
-  const currentTab = tabs.find((t) => t.id === activeTab);
+  // Fall back to the dashboard if the active tab isn't available to this user
+  // (e.g. a stale bookmark like #admin, or a tab they can't access) so the panel
+  // is never blank.
+  const currentTab =
+    tabs.find((t) => t.id === activeTab) ??
+    tabs.find((t) => t.id === 'dashboard') ??
+    tabs[0];
 
   // Cmd/Ctrl+K opens the command palette; ESC closes
   useEffect(() => {
