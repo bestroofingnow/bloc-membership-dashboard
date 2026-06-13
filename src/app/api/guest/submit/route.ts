@@ -292,10 +292,11 @@ export async function POST(req: Request) {
       ends_at: new Date(event.ends_at),
     });
     const origin = req.headers.get('origin') ?? `https://${req.headers.get('host')}`;
-    // If we re-used the existing magic (still valid from a prior submit), don't
-    // include the raw token here — point at /guest/me which will prompt them to
-    // request a fresh link via /api/guest/magic/refresh if they need one.
-    const magic_link = magic ? `${origin}/guest/me?t=${magic.token}` : `${origin}/guest/me`;
+    // Point the token at /api/guest/magic, which verifies it, sets the
+    // intake_guest_id cookie, then redirects to /guest/me. (/guest/me itself
+    // only reads the cookie and would reject a ?t= token.) If we re-used a still
+    // valid magic link, send them to /guest/me to request a fresh one if needed.
+    const magic_link = magic ? `${origin}/api/guest/magic?t=${magic.token}` : `${origin}/guest/me`;
     await email.sendConfirmation({
       to: p.email,
       guest_first_name: p.first_name,

@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     await email.sendMagicLink({
       to: guest.email,
       guest_first_name: guest.first_name,
-      magic_link: `${origin}/guest/me?t=${magic.token}`,
+      magic_link: `${origin}/api/guest/magic?t=${magic.token}`,
     });
   } catch (e) {
     // Swallow: still return 200 to user.
