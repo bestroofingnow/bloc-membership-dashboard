@@ -151,13 +151,15 @@ export function DashboardTab() {
           icon={Users}
           color="blue"
         />
-        <StatCard
-          title="Guests in Pipeline"
-          value={guestsInPipeline}
-          subtitle="Active prospects"
-          icon={UserPlus}
-          color="purple"
-        />
+        {(isAdmin || isDirector) && (
+          <StatCard
+            title="Guests in Pipeline"
+            value={guestsInPipeline}
+            subtitle="Active prospects"
+            icon={UserPlus}
+            color="purple"
+          />
+        )}
         <StatCard
           title="Seats Available"
           value={targetMembers - currentMembers}
@@ -165,13 +167,15 @@ export function DashboardTab() {
           icon={Target}
           color="amber"
         />
-        <StatCard
-          title="Approved This Year"
-          value={guests.filter((g) => g.status === 'Approved').length}
-          subtitle="2026"
-          icon={TrendingUp}
-          color="green"
-        />
+        {(isAdmin || isDirector) && (
+          <StatCard
+            title="Approved This Year"
+            value={guests.filter((g) => g.status === 'Approved').length}
+            subtitle="2026"
+            icon={TrendingUp}
+            color="green"
+          />
+        )}
         <StatCard
           title="After Hours Members"
           value={afterHoursCount}
