@@ -74,3 +74,38 @@ export async function directoryStats(
   }
   return { total: rows.length, without_industry, by_chapter };
 }
+
+/**
+ * "Who is needed": the recruiting target categories (industry_targets) that are
+ * NOT yet filled by a member — optionally within one chapter. Both source tables
+ * are member-readable, so this runs caller-scoped like the rest.
+ */
+export async function recruitingNeeds(
+  token: string,
+  chapter?: string | null,
+): Promise<{ chapter: string; open_targets: string[] }> {
+  const sb = callerClient(token);
+
+  const { data: targets, error: tErr } = await sb
+    .from('industry_targets')
+    .select('title, category_id');
+  if (tErr) throw new Error(tErr.message);
+
+  let dq = sb.from('member_directory').select('category_id, chapter');
+  if (chapter && CHAPTERS.includes(chapter)) dq = dq.eq('chapter', chapter);
+  const { data: dir, error: dErr } = await dq;
+  if (dErr) throw new Error(dErr.message);
+
+  const filled = new Set(
+    ((dir ?? []) as { category_id: string | null }[])
+      .map((d) => d.category_id)
+      .filter((c): c is string => !!c),
+  );
+
+  const open_targets = ((targets ?? []) as { title: string | null; category_id: string | null }[])
+    .filter((t) => !t.category_id || !filled.has(t.category_id))
+    .map((t) => t.title)
+    .filter((t): t is string => !!t);
+
+  return { chapter: chapter && CHAPTERS.includes(chapter) ? chapter : 'all chapters', open_targets };
+}
