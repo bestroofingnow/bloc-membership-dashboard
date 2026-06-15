@@ -3,6 +3,8 @@ export { LeadershipTab } from './LeadershipTab';
 export { MembersTab } from './MembersTab';
 export { AssistantTab } from './AssistantTab';
 export { GrowTab } from './GrowTab';
+export { DirectoryTab } from './DirectoryTab';
+export { ManageTab } from './ManageTab';
 export { TargetsTab } from './TargetsTab';
 export { PipelineTab } from './PipelineTab';
 export { MembershipGuideTab } from './MembershipGuideTab';

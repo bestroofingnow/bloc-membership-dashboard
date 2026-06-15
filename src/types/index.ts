@@ -114,7 +114,7 @@ export interface DashboardStats {
 }
 
 // Tab configuration
-export type TabId = 'dashboard' | 'leadership' | 'members' | 'assistant' | 'grow' | 'targets' | 'pipeline' | 'guide' | 'scanner' | 'intake' | 'events' | 'qr' | 'roster' | 'me' | 'taxonomy' | 'seats' | 'admin';
+export type TabId = 'dashboard' | 'leadership' | 'directory' | 'grow' | 'guide' | 'scanner' | 'me' | 'manage' | 'members' | 'assistant' | 'targets' | 'pipeline' | 'intake' | 'events' | 'qr' | 'roster' | 'taxonomy' | 'seats' | 'admin';
 
 export interface SeatRow {
   industry_id: string;

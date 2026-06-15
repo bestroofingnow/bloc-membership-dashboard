@@ -18,23 +18,14 @@ import {
 import {
   DashboardTab,
   LeadershipTab,
-  MembersTab,
-  AssistantTab,
+  DirectoryTab,
+  ManageTab,
   GrowTab,
-  TargetsTab,
-  PipelineTab,
   MembershipGuideTab,
-  AdminTab,
   ScannerTab,
-  IntakeGuestsTab,
-  EventsTab,
-  QrTokensTab,
-  RosterTab,
   MyProfileTab,
-  MemberTaxonomyTab,
-  SeatMapTab,
 } from '@/components/tabs';
-import { Inbox, CalendarDays, QrCode, Users2, UserCircle, Sparkles, Grid3x3, Bot, Sprout } from 'lucide-react';
+import { UserCircle, Sprout, Settings } from 'lucide-react';
 import { AuthGuard } from '@/components/auth';
 import { BackToTop } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
@@ -60,8 +51,7 @@ const GROUP_LABEL: Record<TabGroup, string> = {
 const baseTabs: TabConfig[] = [
   { id: 'dashboard', label: 'Dashboard',         icon: <LayoutDashboard size={18} />, component: <DashboardTab />,        group: 'core' },
   { id: 'leadership', label: 'Leadership',       icon: <Users size={18} />,           component: <LeadershipTab />,       group: 'core' },
-  { id: 'members', label: 'Members',             icon: <Search size={18} />,          component: <MembersTab />,          group: 'core' },
-  { id: 'assistant', label: 'Ask BLOC',          icon: <Bot size={18} />,             component: <AssistantTab />,        group: 'core' },
+  { id: 'directory', label: 'Directory',         icon: <Search size={18} />,          component: <DirectoryTab />,        group: 'core' },
   { id: 'grow', label: 'Grow',                   icon: <Sprout size={18} />,          component: <GrowTab />,             group: 'core' },
   { id: 'scanner', label: 'Card Scanner',        icon: <CreditCard size={18} />,      component: <ScannerTab />,          group: 'core' },
   { id: 'guide', label: 'Membership Guide',      icon: <BookOpen size={18} />,        component: <MembershipGuideTab />,  group: 'core' },
@@ -109,23 +99,10 @@ function DashboardContent() {
     // Build the role-appropriate set of tabs, each tagged with a `group` so the
     // nav can render them in clear visual sections.
     const all: TabConfig[] = [...baseTabs];
-    if (isAdmin || isDirector) {
-      all.push(
-        { id: 'targets', label: 'Most Wanted',     icon: <Target size={18} />,      component: <TargetsTab />,     group: 'core' },
-        { id: 'pipeline', label: 'Guest Pipeline', icon: <UserPlus size={18} />,    component: <PipelineTab />,    group: 'core' },
-        { id: 'intake', label: 'Guest Inbox',      icon: <Inbox size={18} />,       component: <IntakeGuestsTab />, group: 'guestflow' },
-        { id: 'events', label: 'Events',           icon: <CalendarDays size={18} />, component: <EventsTab />,      group: 'guestflow' },
-        { id: 'qr', label: 'QR Codes',             icon: <QrCode size={18} />,      component: <QrTokensTab />,     group: 'guestflow' },
-        { id: 'roster', label: 'Roster',           icon: <Users2 size={18} />,      component: <RosterTab />,       group: 'guestflow' },
-        { id: 'seats', label: 'Category Seats',    icon: <Grid3x3 size={18} />,     component: <SeatMapTab />,      group: 'guestflow' },
-      );
-    }
     all.push({ id: 'me', label: 'My Profile', icon: <UserCircle size={18} />, component: <MyProfileTab />, group: 'personal' });
-    if (isAdmin) {
-      all.push(
-        { id: 'taxonomy', label: 'Member Taxonomy', icon: <Sparkles size={18} />, component: <MemberTaxonomyTab />, group: 'admin' },
-        { id: 'admin', label: 'Admin',              icon: <Shield size={18} />,   component: <AdminTab />,           group: 'admin' },
-      );
+    // All staff tools collapse into ONE "Manage" hub (with its own sub-nav).
+    if (isAdmin || isDirector) {
+      all.push({ id: 'manage', label: 'Manage', icon: <Settings size={18} />, component: <ManageTab />, group: 'admin' });
     }
     // Stable group order: core → guestflow → personal → admin
     const order: TabGroup[] = ['core', 'guestflow', 'personal', 'admin'];
