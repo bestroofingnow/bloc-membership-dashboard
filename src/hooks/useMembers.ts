@@ -8,6 +8,7 @@ import { members as staticMembers } from '@/data/members';
 import { chooseInitialData, resolveFetchResult, isDemoMode } from '@/lib/demo-mode';
 import { summarizeMembers } from '@/lib/members/summary';
 import { directoryRowToMember, type DirectoryRow } from '@/lib/members/directory';
+import { memberMatchesQuery } from '@/lib/members/search';
 
 function transformDbToMember(row: any): Member {
   return {
@@ -250,16 +251,7 @@ export function useMembers() {
   }, [members]);
 
   const searchMembers = useCallback(
-    (query: string): Member[] => {
-      const lowerQuery = query.toLowerCase();
-      return members.filter(
-        (m) =>
-          m.name.toLowerCase().includes(lowerQuery) ||
-          m.company.toLowerCase().includes(lowerQuery) ||
-          (m.chapter ?? '').toLowerCase().includes(lowerQuery) ||
-          m.industry.toLowerCase().includes(lowerQuery)
-      );
-    },
+    (query: string): Member[] => members.filter((m) => memberMatchesQuery(m, query)),
     [members]
   );
 

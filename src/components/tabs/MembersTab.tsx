@@ -8,6 +8,7 @@ import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { ChapterName, Member } from '@/types';
 import { csvRow } from '@/lib/csv';
+import { memberMatchesQuery } from '@/lib/members/search';
 
 type ChapterFilter = ChapterName | 'all' | 'after_hours';
 
@@ -165,14 +166,8 @@ export function MembersTab() {
       );
     }
 
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (m) =>
-          m.name.toLowerCase().includes(query) ||
-          m.company.toLowerCase().includes(query) ||
-          m.industry.toLowerCase().includes(query)
-      );
+    if (searchQuery.trim()) {
+      result = result.filter((m) => memberMatchesQuery(m, searchQuery));
     }
 
     return result.sort((a, b) => a.name.localeCompare(b.name));
