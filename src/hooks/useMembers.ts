@@ -78,25 +78,18 @@ export function useMembers() {
 
     if (!isConfigured || !session) return;
 
-    // Set up realtime subscription
+    // Live updates for EVERYONE: any member add/edit/remove bumps the public
+    // directory_version row (migration 029). Every logged-in client receives that
+    // signal and refetches the privacy-projected member_directory. We listen to the
+    // version signal rather than the members table, so this keeps working after the
+    // members-table RLS tightening (027) — and no member PII is ever sent over the
+    // realtime stream (only a version number), unlike a raw members-table feed.
     const channel = supabase
-      .channel('members-realtime')
+      .channel('directory-version')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'members' },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newMember = transformDbToMember(payload.new);
-            setMembers((prev) => [...prev, newMember].sort((a, b) => a.name.localeCompare(b.name)));
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedMember = transformDbToMember(payload.new);
-            setMembers((prev) =>
-              prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setMembers((prev) => prev.filter((m) => m.id !== payload.old.id));
-          }
-        }
+        { event: '*', schema: 'public', table: 'directory_version' },
+        () => { fetchMembers(); },
       )
       .subscribe();
 
