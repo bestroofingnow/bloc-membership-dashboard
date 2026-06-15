@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckCircle, Loader2, ArrowLeft, ExternalLink } from 'lucide-react';
 
 export default function JoinPage() {
@@ -15,6 +15,13 @@ export default function JoinPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ref, setRef] = useState<string | null>(null);
+
+  // Capture an attributed invite link (…/join?ref=<memberId>) so the application
+  // is credited to the member who invited them.
+  useEffect(() => {
+    setRef(new URLSearchParams(window.location.search).get('ref'));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +32,7 @@ export default function JoinPage() {
       const res = await fetch('/api/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, ref }),
       });
 
       const data = await res.json();

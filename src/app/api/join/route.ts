@@ -92,6 +92,15 @@ export async function POST(request: Request) {
     );
   }
 
+  // Attribution: if the form was reached via a member's invite link
+  // (…/join?ref=<memberId>), credit the application to that member.
+  let invitedByMemberId: string | null = null;
+  const ref = typeof body.ref === 'string' ? body.ref.trim() : '';
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref)) {
+    const { data: refMember } = await supabase.from('members').select('id').eq('id', ref).maybeSingle();
+    invitedByMemberId = refMember?.id ?? null;
+  }
+
   // Non-blocking: link into the one lead funnel. Lead-only (never 'member') — invite-only.
   await linkLead(supabase, {
     source_table: 'public_signups',
@@ -102,7 +111,8 @@ export async function POST(request: Request) {
     phone: body.phone?.trim() || null,
     source: 'public_signup',
     stage: 'applied',
-    note: 'web join form',
+    invited_by_member_id: invitedByMemberId,
+    note: invitedByMemberId ? 'web join form (member invite)' : 'web join form',
   });
 
   return NextResponse.json({ success: true });

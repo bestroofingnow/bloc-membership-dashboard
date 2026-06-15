@@ -2,6 +2,7 @@ export { DashboardTab } from './DashboardTab';
 export { LeadershipTab } from './LeadershipTab';
 export { MembersTab } from './MembersTab';
 export { AssistantTab } from './AssistantTab';
+export { GrowTab } from './GrowTab';
 export { TargetsTab } from './TargetsTab';
 export { PipelineTab } from './PipelineTab';
 export { MembershipGuideTab } from './MembershipGuideTab';

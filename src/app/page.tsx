@@ -20,6 +20,7 @@ import {
   LeadershipTab,
   MembersTab,
   AssistantTab,
+  GrowTab,
   TargetsTab,
   PipelineTab,
   MembershipGuideTab,
@@ -33,7 +34,7 @@ import {
   MemberTaxonomyTab,
   SeatMapTab,
 } from '@/components/tabs';
-import { Inbox, CalendarDays, QrCode, Users2, UserCircle, Sparkles, Grid3x3, Bot } from 'lucide-react';
+import { Inbox, CalendarDays, QrCode, Users2, UserCircle, Sparkles, Grid3x3, Bot, Sprout } from 'lucide-react';
 import { AuthGuard } from '@/components/auth';
 import { BackToTop } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,6 +62,7 @@ const baseTabs: TabConfig[] = [
   { id: 'leadership', label: 'Leadership',       icon: <Users size={18} />,           component: <LeadershipTab />,       group: 'core' },
   { id: 'members', label: 'Members',             icon: <Search size={18} />,          component: <MembersTab />,          group: 'core' },
   { id: 'assistant', label: 'Ask BLOC',          icon: <Bot size={18} />,             component: <AssistantTab />,        group: 'core' },
+  { id: 'grow', label: 'Grow',                   icon: <Sprout size={18} />,          component: <GrowTab />,             group: 'core' },
   { id: 'scanner', label: 'Card Scanner',        icon: <CreditCard size={18} />,      component: <ScannerTab />,          group: 'core' },
   { id: 'guide', label: 'Membership Guide',      icon: <BookOpen size={18} />,        component: <MembershipGuideTab />,  group: 'core' },
 ];
