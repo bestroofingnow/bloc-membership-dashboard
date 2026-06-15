@@ -104,7 +104,7 @@ export async function POST(request: Request) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514',
         // Fallback: 'claude-3-5-sonnet-20241022' if model not available
         max_tokens: 1024,
         messages: [

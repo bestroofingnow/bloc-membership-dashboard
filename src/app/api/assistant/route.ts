@@ -100,7 +100,7 @@ export async function POST(request: Request) {
       .filter((m: unknown): m is { role: string; content: string } =>
         !!m && typeof (m as { content?: unknown }).content === 'string' &&
         ((m as { role?: unknown }).role === 'user' || (m as { role?: unknown }).role === 'assistant'))
-      .map((m: { role: string; content: string }) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+      .map((m: { role: string; content: string }) => ({ role: m.role as 'user' | 'assistant', content: m.content.slice(0, 2000) })),
     { role: 'user', content: question },
   ];
 
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
       const content = (data.content ?? []) as AnthropicContentBlock[];
       const toolUses = content.filter((b): b is AnthropicToolUseBlock => b.type === 'tool_use');
 
-      if (data.stop_reason === 'tool_use' && toolUses.length > 0) {
+      if (toolUses.length > 0) {
         // Record the assistant's tool-use turn, then answer each tool call.
         messages.push({ role: 'assistant', content });
         const toolResults = [];
