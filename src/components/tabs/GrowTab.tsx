@@ -5,6 +5,7 @@ import { Sprout, Copy, Check, QrCode, Trophy, AlertTriangle, Loader2, Send } fro
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui';
 import { QrImage } from '@/components/ui/QrImage';
+import { memberInviteUrl } from '@/lib/links';
 
 interface Lead {
   id: string;
@@ -123,7 +124,7 @@ export function GrowTab() {
   useEffect(() => { load(); }, [load]);
 
   const isStaff = role === 'admin' || role === 'chapter_director';
-  const inviteUrl = memberId && typeof window !== 'undefined' ? `${window.location.origin}/join?ref=${memberId}` : '';
+  const inviteUrl = memberId && typeof window !== 'undefined' ? memberInviteUrl(window.location.origin, memberId) : '';
 
   async function copyInvite() {
     if (!inviteUrl) return;

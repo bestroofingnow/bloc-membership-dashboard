@@ -8,6 +8,7 @@ import { useEvents } from '@/hooks/useEvents';
 import { useMembers } from '@/hooks/useMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import { QrImage, useToast } from '@/components/ui';
+import { guestInviteUrl } from '@/lib/links';
 import type { ChapterName, QrTokenKindUI, QrTokenRow } from '@/types';
 
 async function downloadQrPng(url: string, baseName: string): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -82,7 +83,7 @@ export function QrTokensTab() {
   }
 
   function publicUrl(token: string): string {
-    return `${origin()}/guest/i/${token}`;
+    return guestInviteUrl(origin(), token);
   }
 
   async function copyToClipboard(text: string, id: string) {
