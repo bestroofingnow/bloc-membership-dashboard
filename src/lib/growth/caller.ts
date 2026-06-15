@@ -29,16 +29,25 @@ export async function resolveCaller(token: string): Promise<Caller | null> {
   const userId = u.user.id;
   const email = u.user.email;
 
-  const { data: prof } = await sb.from('profiles').select('role').eq('id', userId).maybeSingle();
+  const { data: prof } = await sb.from('profiles').select('role, member_id').eq('id', userId).maybeSingle();
   const role = ((prof?.role as Caller['role']) ?? 'member');
 
-  const { data: mem } = await sb.from('members').select('id').ilike('email', email).limit(1).maybeSingle();
+  // Prefer the deterministic profiles.member_id FK (migration 019, backfilled only
+  // on an exactly-one email match). Fall back to an email lookup ONLY when it is
+  // unambiguous — never bind to an arbitrary row when emails collide (019 permits
+  // duplicate emails until cleared), or a member could be scoped to another
+  // member's leads.
+  let memberId = (prof?.member_id as string | undefined) ?? null;
+  if (!memberId) {
+    const { data: mems } = await sb.from('members').select('id').ilike('email', email).limit(2);
+    if (mems && mems.length === 1) memberId = mems[0].id as string;
+  }
 
   return {
     userId,
     email,
     role,
-    memberId: (mem?.id as string | undefined) ?? null,
+    memberId,
     isStaff: role === 'admin' || role === 'chapter_director',
     sb,
   };

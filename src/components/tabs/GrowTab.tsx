@@ -147,7 +147,7 @@ export function GrowTab() {
         next_action_due: due ? new Date(`${due}T17:00:00`).toISOString() : null,
       }),
     });
-    if (res.ok) { toast.success('Follow-up saved'); load(); }
+    if (res.ok) { toast.success('Follow-up saved'); await load(); }
     else { const b = await res.json().catch(() => null); toast.error(`Save failed: ${b?.error ?? res.status}`); }
   }
 
