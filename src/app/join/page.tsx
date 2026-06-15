@@ -7,10 +7,8 @@ export default function JoinPage() {
   const [form, setForm] = useState({
     name: '',
     company: '',
-    industry: '',
     email: '',
     phone: '',
-    referralSource: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -124,7 +122,7 @@ export default function JoinPage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Company <span className="text-red-500">*</span>
+                Business Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -133,19 +131,6 @@ export default function JoinPage() {
                 onChange={(e) => updateField('company', e.target.value)}
                 className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
                 placeholder="Smith Consulting LLC"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Industry
-              </label>
-              <input
-                type="text"
-                value={form.industry}
-                onChange={(e) => updateField('industry', e.target.value)}
-                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
-                placeholder="e.g., Business Consulting"
               />
             </div>
 
@@ -173,30 +158,12 @@ export default function JoinPage() {
                 className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
                 placeholder="704-555-0000"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                How did you hear about BLOC?
-              </label>
-              <select
-                value={form.referralSource}
-                onChange={(e) => updateField('referralSource', e.target.value)}
-                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
-              >
-                <option value="">Select...</option>
-                <option value="Member referral">A current member</option>
-                <option value="Website">BLOC Website</option>
-                <option value="Social media">Social Media</option>
-                <option value="Event">Attended an event</option>
-                <option value="Google">Google search</option>
-                <option value="Other">Other</option>
-              </select>
+              <p className="text-xs text-slate-400 mt-1">Add at least an email or phone so we can reach you.</p>
             </div>
 
             <button
               type="submit"
-              disabled={submitting || !form.name || !form.company}
+              disabled={submitting || !form.name || !form.company || (!form.email && !form.phone)}
               className="w-full bg-bloc-blue text-white py-3 px-6 rounded-lg font-medium hover:bg-bloc-navy transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {submitting ? (

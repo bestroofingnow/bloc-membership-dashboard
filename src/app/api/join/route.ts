@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { linkLead } from '@/lib/leads/linkLead';
+import { parseJoinInput } from '@/lib/join/validate';
 
 // Simple in-memory rate limiting
 const submissions = new Map<string, number>();
@@ -53,32 +54,24 @@ export async function POST(request: Request) {
     );
   }
 
-  // Validate required fields
-  if (!body.name || typeof body.name !== 'string' || body.name.trim().length === 0) {
-    return NextResponse.json(
-      { error: 'Name is required' },
-      { status: 400 }
-    );
+  // Validate + normalize the simplified sign-up (name, business name, email/phone).
+  const parsed = parseJoinInput(body);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-
-  if (!body.company || typeof body.company !== 'string' || body.company.trim().length === 0) {
-    return NextResponse.json(
-      { error: 'Company is required' },
-      { status: 400 }
-    );
-  }
+  const { name, company, email, phone } = parsed.value;
 
   const { data: inserted, error } = await supabase
     .from('public_signups')
     .insert([
       {
-        name: body.name.trim(),
-        company: body.company.trim(),
-        industry: body.industry?.trim() || null,
-        email: body.email?.trim() || null,
-        phone: body.phone?.trim() || null,
-        referral_source: body.referralSource?.trim() || null,
-        notes: body.notes?.trim() || null,
+        name,
+        company,
+        email,
+        phone,
+        industry: null,
+        referral_source: null,
+        notes: null,
       },
     ])
     .select('id')
@@ -105,10 +98,10 @@ export async function POST(request: Request) {
   await linkLead(supabase, {
     source_table: 'public_signups',
     source_id: inserted.id,
-    email: body.email?.trim() || null,
-    name: body.name.trim(),
-    company: body.company.trim(),
-    phone: body.phone?.trim() || null,
+    email,
+    name,
+    company,
+    phone,
     source: 'public_signup',
     stage: 'applied',
     invited_by_member_id: invitedByMemberId,
