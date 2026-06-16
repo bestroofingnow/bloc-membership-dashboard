@@ -53,7 +53,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS members_user_id_uidx
 UPDATE profiles p
 SET member_id = sub.mid
 FROM (
-  SELECT m.email_normalized AS norm, MIN(m.id) AS mid, count(*) AS n
+  SELECT m.email_normalized AS norm, MIN(m.id::text)::uuid AS mid, count(*) AS n
   FROM members m
   WHERE m.email_normalized IS NOT NULL
   GROUP BY m.email_normalized
@@ -69,7 +69,7 @@ WHERE p.member_id IS NULL
 UPDATE members m
 SET user_id = sub.pid
 FROM (
-  SELECT p.member_id AS mid, MIN(p.id) AS pid, count(*) AS n
+  SELECT p.member_id AS mid, MIN(p.id::text)::uuid AS pid, count(*) AS n
   FROM profiles p
   WHERE p.member_id IS NOT NULL
   GROUP BY p.member_id

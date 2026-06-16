@@ -83,7 +83,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  SELECT count(*), MIN(id) INTO v_cnt, v_mid
+  SELECT count(*), MIN(id::text)::uuid INTO v_cnt, v_mid
   FROM public.members
   WHERE email_normalized = v_norm;
 
@@ -117,7 +117,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  SELECT count(*), MIN(id) INTO v_cnt, v_pid
+  SELECT count(*), MIN(id::text)::uuid INTO v_cnt, v_pid
   FROM public.profiles
   WHERE NULLIF(lower(btrim(email)), '') = v_norm;
 

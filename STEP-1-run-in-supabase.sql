@@ -147,7 +147,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS members_user_id_uidx
 UPDATE profiles p
 SET member_id = sub.mid
 FROM (
-  SELECT m.email_normalized AS norm, MIN(m.id) AS mid, count(*) AS n
+  SELECT m.email_normalized AS norm, MIN(m.id::text)::uuid AS mid, count(*) AS n
   FROM members m
   WHERE m.email_normalized IS NOT NULL
   GROUP BY m.email_normalized
@@ -163,7 +163,7 @@ WHERE p.member_id IS NULL
 UPDATE members m
 SET user_id = sub.pid
 FROM (
-  SELECT p.member_id AS mid, MIN(p.id) AS pid, count(*) AS n
+  SELECT p.member_id AS mid, MIN(p.id::text)::uuid AS pid, count(*) AS n
   FROM profiles p
   WHERE p.member_id IS NOT NULL
   GROUP BY p.member_id
@@ -313,7 +313,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  SELECT count(*), MIN(id) INTO v_cnt, v_mid
+  SELECT count(*), MIN(id::text)::uuid INTO v_cnt, v_mid
   FROM public.members
   WHERE email_normalized = v_norm;
 
@@ -347,7 +347,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  SELECT count(*), MIN(id) INTO v_cnt, v_pid
+  SELECT count(*), MIN(id::text)::uuid INTO v_cnt, v_pid
   FROM public.profiles
   WHERE NULLIF(lower(btrim(email)), '') = v_norm;
 
@@ -584,7 +584,7 @@ $$;
 -- The RPC is the only write path; lock it to the service role (public writers use it).
 REVOKE ALL ON FUNCTION public.link_lead(
   TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, UUID, UUID, UUID, TEXT
-) FROM PUBLIC;
+) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.link_lead(
   TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, UUID, UUID, UUID, TEXT
 ) TO service_role;

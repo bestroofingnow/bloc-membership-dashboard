@@ -216,9 +216,11 @@ END;
 $$;
 
 -- The RPC is the only write path; lock it to the service role (public writers use it).
+-- NB: Supabase default privileges GRANT EXECUTE directly to anon/authenticated at
+-- creation, so revoking PUBLIC alone is insufficient — revoke those roles explicitly.
 REVOKE ALL ON FUNCTION public.link_lead(
   TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, UUID, UUID, UUID, TEXT
-) FROM PUBLIC;
+) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.link_lead(
   TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, UUID, UUID, UUID, TEXT
 ) TO service_role;
