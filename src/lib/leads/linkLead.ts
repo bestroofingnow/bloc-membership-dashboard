@@ -2,13 +2,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { LeadStage } from './stage';
 
 export interface LinkLeadArgs {
-  source_table: 'guests' | 'public_signups' | 'intake_guests' | 'intake_rsvps' | 'business_card_scans';
+  source_table: 'guests' | 'public_signups' | 'intake_guests' | 'intake_rsvps' | 'business_card_scans' | 'membership_inbox';
   source_id: string;
   email?: string | null;
   name?: string | null;
   company?: string | null;
   phone?: string | null;
-  source: 'public_signup' | 'qr_rsvp' | 'card_scan' | 'manual' | 'import';
+  source: 'public_signup' | 'qr_rsvp' | 'card_scan' | 'manual' | 'import' | 'membership_email';
   stage: LeadStage;
   invited_by_member_id?: string | null;
   matched_member_id?: string | null;
