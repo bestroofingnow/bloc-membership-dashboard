@@ -30,9 +30,11 @@ const EMPTY: ExtractedCardData = {
 
 /**
  * Backup business-card extractor: when the mobile app's on-device OCR can't fully
- * read a card, it uploads the image here and we ask a vision model (Groq /
+ * read a card, it sends the image here and we ask a vision model (Groq /
  * Llama 4 Scout by default) to pull the structured fields. Key stays server-side.
- * Returns { success, data } — no persistence; the client reviews + saves via
+ * Accepts either JSON { imageBase64, mimeType } (preferred from React Native — RN
+ * multipart uploads are unreliable) or multipart form-data with an `image` file.
+ * Returns { success, data }; no persistence — the client reviews + saves via
  * /api/scan/export.
  */
 export async function POST(request: Request) {
@@ -56,7 +58,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
   }
 
-  // Require a logged-in member before the paid vision call.
   const authHeader = request.headers.get('authorization') ?? '';
   const bearer = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : '';
   if (!bearer) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -73,19 +74,31 @@ export async function POST(request: Request) {
   }
 
   let dataUrl: string;
+  const contentType = request.headers.get('content-type') || '';
   try {
-    const form = await request.formData();
-    const file = form.get('image') as File | null;
-    if (!file) return NextResponse.json({ error: 'No image file provided' }, { status: 400 });
-    const valid = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!valid.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type.' }, { status: 400 });
+    if (contentType.includes('application/json')) {
+      const body = (await request.json()) as { imageBase64?: string; mimeType?: string };
+      const b64 = (body.imageBase64 || '').trim();
+      const mime = (body.mimeType || 'image/jpeg').trim();
+      if (!b64) return NextResponse.json({ error: 'No image provided' }, { status: 400 });
+      if (b64.length > 14_000_000) {
+        return NextResponse.json({ error: 'Image too large (max ~10MB).' }, { status: 400 });
+      }
+      dataUrl = `data:${mime};base64,${b64}`;
+    } else {
+      const form = await request.formData();
+      const file = form.get('image') as File | null;
+      if (!file) return NextResponse.json({ error: 'No image file provided' }, { status: 400 });
+      const valid = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (!valid.includes(file.type)) {
+        return NextResponse.json({ error: 'Invalid file type.' }, { status: 400 });
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        return NextResponse.json({ error: 'File too large (max 10MB).' }, { status: 400 });
+      }
+      const b64 = Buffer.from(await file.arrayBuffer()).toString('base64');
+      dataUrl = `data:${file.type};base64,${b64}`;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: 'File too large (max 10MB).' }, { status: 400 });
-    }
-    const b64 = Buffer.from(await file.arrayBuffer()).toString('base64');
-    dataUrl = `data:${file.type};base64,${b64}`;
   } catch {
     return NextResponse.json({ error: 'Failed to process uploaded image' }, { status: 400 });
   }
