@@ -6,6 +6,7 @@ import { visibleManageTools, type Role } from '@/lib/nav/manage';
 import { TargetsTab } from './TargetsTab';
 import { PipelineTab } from './PipelineTab';
 import { IntakeGuestsTab } from './IntakeGuestsTab';
+import { MembershipInboxTab } from './MembershipInboxTab';
 import { EventsTab } from './EventsTab';
 import { QrTokensTab } from './QrTokensTab';
 import { RosterTab } from './RosterTab';
@@ -17,6 +18,7 @@ const COMPONENTS: Record<string, React.ReactNode> = {
   targets: <TargetsTab />,
   pipeline: <PipelineTab />,
   intake: <IntakeGuestsTab />,
+  membership: <MembershipInboxTab />,
   events: <EventsTab />,
   qr: <QrTokensTab />,
   roster: <RosterTab />,
