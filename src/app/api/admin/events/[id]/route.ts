@@ -12,6 +12,7 @@ const patchSchema = z.object({
   ends_at: z.string().datetime({ offset: true }).optional(),
   location_name: z.string().max(200).nullable().optional(),
   location_address: z.string().max(500).nullable().optional(),
+  public_url: z.string().max(2048).nullable().optional(),
   public_visible: z.boolean().optional(),
 });
 

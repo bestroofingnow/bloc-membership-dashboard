@@ -186,6 +186,8 @@ export interface IntakeEvent {
   ends_at: string;
   location_name: string | null;
   location_address: string | null;
+  /** Public registration/detail link (e.g. businessleadersofcharlotte.com/event-…). */
+  public_url: string | null;
   ics_uid: string;
   public_visible: boolean;
   created_at: string;

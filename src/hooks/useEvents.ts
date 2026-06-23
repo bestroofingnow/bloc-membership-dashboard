@@ -30,7 +30,7 @@ export function useEvents() {
     try {
       const { data, error: fetchErr } = await supabase
         .from('events')
-        .select('id,chapter,kind,title,description,starts_at,ends_at,location_name,location_address,ics_uid,public_visible,created_at')
+        .select('id,chapter,kind,title,description,starts_at,ends_at,location_name,location_address,public_url,ics_uid,public_visible,created_at')
         .order('starts_at', { ascending: true });
       if (fetchErr) {
         setError(fetchErr.message);

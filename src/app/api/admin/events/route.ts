@@ -12,6 +12,7 @@ const createSchema = z.object({
   ends_at: z.string().datetime({ offset: true }),
   location_name: z.string().max(200).nullable(),
   location_address: z.string().max(500).nullable(),
+  public_url: z.string().max(2048).nullable().optional(),
   ics_uid: z.string().max(200).optional(),
   public_visible: z.boolean().default(true),
 });
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
       ends_at: p.ends_at,
       location_name: p.location_name,
       location_address: p.location_address,
+      public_url: p.public_url ?? null,
       ics_uid,
       public_visible: p.public_visible,
     })

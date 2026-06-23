@@ -20,6 +20,7 @@ interface FormState {
   ends_at: string;
   location_name: string;
   location_address: string;
+  public_url: string;
   public_visible: boolean;
 }
 
@@ -32,6 +33,7 @@ const emptyForm: FormState = {
   ends_at: '',
   location_name: '',
   location_address: '',
+  public_url: '',
   public_visible: true,
 };
 
@@ -72,6 +74,7 @@ export function EventsTab() {
       ends_at: toLocalDateTimeInput(ev.ends_at),
       location_name: ev.location_name ?? '',
       location_address: ev.location_address ?? '',
+      public_url: ev.public_url ?? '',
       public_visible: ev.public_visible,
     });
     setFormError(null);
@@ -91,6 +94,7 @@ export function EventsTab() {
         ends_at: fromLocalDateTimeInput(form.ends_at),
         location_name: form.location_name.trim() || null,
         location_address: form.location_address.trim() || null,
+        public_url: form.public_url.trim() || null,
         public_visible: form.public_visible,
       };
       if (editing) {
@@ -200,6 +204,9 @@ export function EventsTab() {
             </FormField>
             <FormField label="Address">
               <input className="w-full rounded border p-2" value={form.location_address} onChange={(e) => setForm({ ...form, location_address: e.target.value })} />
+            </FormField>
+            <FormField label="Public event link (for app sharing / QR)">
+              <input className="w-full rounded border p-2" type="url" placeholder="https://businessleadersofcharlotte.com/event-…" value={form.public_url} onChange={(e) => setForm({ ...form, public_url: e.target.value })} />
             </FormField>
             <FormField label="Description">
               <textarea className="w-full rounded border p-2" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
