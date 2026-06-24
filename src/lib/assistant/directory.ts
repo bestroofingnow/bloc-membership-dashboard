@@ -7,12 +7,15 @@ export interface DirectoryMatch {
   industry: string | null;
   title: string | null;
   website: string | null;
+  description: string | null;
 }
 
 // Business-only columns. We deliberately never select the opt-in personal fields
 // (mobile_phone / address / birthday) — and not even business email/phone — so the
 // assistant is a directory-lookup helper, not a contact-harvesting tool.
-const BUSINESS_COLUMNS = 'name, company, chapter, industry, title, website';
+// `description` is the member's business summary (what they do), shown in the
+// directory, so the assistant can speak fluently about each business.
+const BUSINESS_COLUMNS = 'name, company, chapter, industry, title, website, description';
 
 /**
  * A Supabase client scoped to the CALLER (anon key + the caller's JWT). Queries
@@ -47,7 +50,7 @@ export async function searchMembers(
     const term = args.query.replace(/[%,()]/g, ' ').trim();
     if (term) {
       q = q.or(
-        `industry.ilike.%${term}%,company.ilike.%${term}%,title.ilike.%${term}%,name.ilike.%${term}%`,
+        `industry.ilike.%${term}%,company.ilike.%${term}%,title.ilike.%${term}%,name.ilike.%${term}%,description.ilike.%${term}%`,
       );
     }
   }
