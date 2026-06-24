@@ -25,6 +25,43 @@ function pickStr(...vals: unknown[]): string | null {
   return null;
 }
 
+interface FullInbound {
+  from: string | null;
+  subject: string | null;
+  text: string | null;
+  html: string | null;
+}
+
+/**
+ * Resend's `email.received` webhook carries only metadata, so fetch the full
+ * email body via the Received Emails API (GET /emails/receiving/{id}). Uses the
+ * same RESEND_API_KEY as outbound. Returns null on any failure (caller falls back
+ * to the metadata it already has).
+ */
+async function fetchResendInbound(id: string): Promise<FullInbound | null> {
+  const key = (process.env.RESEND_API_KEY || '').trim();
+  if (!key) return null;
+  try {
+    const r = await fetch(`https://api.resend.com/emails/receiving/${encodeURIComponent(id)}`, {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    if (!r.ok) {
+      console.error('resend inbound fetch', r.status, (await r.text()).slice(0, 200));
+      return null;
+    }
+    const j = (await r.json()) as Record<string, unknown>;
+    return {
+      from: coerceAddress(j.from),
+      subject: pickStr(j.subject),
+      text: pickStr(j.text),
+      html: pickStr(j.html),
+    };
+  } catch (e) {
+    console.error('resend inbound fetch failed', e);
+    return null;
+  }
+}
+
 /**
  * Inbound email webhook for membership notifications from the BLOC online system
  * (Wild Apricot), delivered by Resend inbound (or any provider that POSTs JSON).
@@ -55,10 +92,22 @@ export async function POST(request: Request) {
 
   // Resend wraps the email in { type, data: {...} }; other providers POST it flat.
   const evt = ((body as Record<string, unknown>).data ?? body) as Record<string, unknown>;
-  const from = coerceAddress(evt.from) ?? coerceAddress((evt as Record<string, unknown>).sender);
-  const subject = pickStr(evt.subject, (evt as Record<string, unknown>).Subject) ?? '';
-  const text = pickStr(evt.text, (evt as Record<string, unknown>).plain, (evt as Record<string, unknown>).body);
-  const html = pickStr(evt.html, (evt as Record<string, unknown>).Html);
+  let from = coerceAddress(evt.from) ?? coerceAddress((evt as Record<string, unknown>).sender);
+  let subject = pickStr(evt.subject, (evt as Record<string, unknown>).Subject) ?? '';
+  let text = pickStr(evt.text, (evt as Record<string, unknown>).plain, (evt as Record<string, unknown>).body);
+  let html = pickStr(evt.html, (evt as Record<string, unknown>).Html);
+
+  // Resend inbound webhooks ship only metadata — pull the body via the API.
+  const emailId = pickStr(evt.email_id, (evt as Record<string, unknown>).id);
+  if (!text && !html && emailId) {
+    const full = await fetchResendInbound(emailId);
+    if (full) {
+      from = full.from ?? from;
+      subject = full.subject || subject;
+      text = full.text;
+      html = full.html;
+    }
+  }
 
   if (!text && !html && !subject) {
     return NextResponse.json({ error: 'empty_email' }, { status: 400 });
