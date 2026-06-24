@@ -1,10 +1,36 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { getServerSupabase } from '@/lib/guest/supabase-server';
 import { rateLimit } from '@/lib/guest/rate-limit';
 import { parseMembershipEmail } from '@/lib/membership/parseEmail';
 import { upsertWaitingLead } from '@/lib/membership/apply';
 
 export const runtime = 'nodejs';
+
+/**
+ * Verify a Svix-style webhook signature (Resend uses Svix). Defense-in-depth on
+ * top of the shared ?key= secret — only enforced when RESEND_WEBHOOK_SECRET is set.
+ * Signed content is `${svix-id}.${svix-timestamp}.${rawBody}`; the secret is
+ * `whsec_<base64>`. Returns true if any provided v1 signature matches.
+ */
+function verifySvixSignature(headers: Headers, rawBody: string, secret: string): boolean {
+  const id = headers.get('svix-id');
+  const ts = headers.get('svix-timestamp');
+  const sig = headers.get('svix-signature');
+  if (!id || !ts || !sig) return false;
+  try {
+    const key = secret.startsWith('whsec_') ? Buffer.from(secret.slice(6), 'base64') : Buffer.from(secret);
+    const expected = crypto.createHmac('sha256', key).update(`${id}.${ts}.${rawBody}`).digest('base64');
+    const expectedBuf = Buffer.from(expected);
+    return sig.split(' ').some((part) => {
+      const provided = part.includes(',') ? part.split(',')[1] : part;
+      const pBuf = Buffer.from(provided);
+      return pBuf.length === expectedBuf.length && crypto.timingSafeEqual(pBuf, expectedBuf);
+    });
+  } catch {
+    return false;
+  }
+}
 
 /** Coerce the many shapes an email address field can take into a display string. */
 function coerceAddress(v: unknown): string | null {
@@ -85,7 +111,22 @@ export async function POST(request: Request) {
   const ok = await rateLimit({ bucket: 'inbound-email', limit: 120, windowSeconds: 60 });
   if (!ok) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
 
-  const body = await request.json().catch(() => null);
+  // Read the raw body once so we can verify the webhook signature before parsing.
+  const raw = await request.text();
+
+  // Optional defense-in-depth: if a Svix signing secret is configured, require a
+  // valid signature (Resend signs webhooks). Skipped when unset.
+  const whsec = (process.env.RESEND_WEBHOOK_SECRET || '').trim();
+  if (whsec && !verifySvixSignature(request.headers, raw, whsec)) {
+    return NextResponse.json({ error: 'bad_signature' }, { status: 401 });
+  }
+
+  let body: unknown = null;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    body = null;
+  }
   if (!body || typeof body !== 'object') {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 });
   }
