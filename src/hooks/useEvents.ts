@@ -28,16 +28,30 @@ export function useEvents() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: fetchErr } = await supabase
-        .from('events')
-        .select('id,chapter,kind,title,description,starts_at,ends_at,location_name,location_address,public_url,ics_uid,public_visible,created_at')
-        .order('starts_at', { ascending: true });
+      // `public_url` is added by migration 030. Until it's applied, selecting it
+      // 400s — so fall back to the base columns so the Events tab still works.
+      const BASE = 'id,chapter,kind,title,description,starts_at,ends_at,location_name,location_address,ics_uid,public_visible,created_at';
+      let rows: unknown[] | null = null;
+      let fetchErr: { message: string } | null = null;
+      {
+        const res = await supabase
+          .from('events')
+          .select(`${BASE},public_url`)
+          .order('starts_at', { ascending: true });
+        rows = res.data;
+        fetchErr = res.error;
+      }
+      if (fetchErr && /public_url/i.test(fetchErr.message || '')) {
+        const res = await supabase.from('events').select(BASE).order('starts_at', { ascending: true });
+        rows = res.data;
+        fetchErr = res.error;
+      }
       if (fetchErr) {
         setError(fetchErr.message);
         setEvents([]);
         return;
       }
-      setEvents((data ?? []) as IntakeEvent[]);
+      setEvents((rows ?? []) as IntakeEvent[]);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
