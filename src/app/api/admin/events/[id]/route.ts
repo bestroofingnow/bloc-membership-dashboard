@@ -46,7 +46,10 @@ export async function PATCH(req: Request, { params }: Props) {
   }
 
   const sb = getServerSupabase();
-  const { error: upErr } = await sb.from('events').update(parsed.data).eq('id', id);
+  // Drop an empty/null public_url so edits work before migration 030 adds the column.
+  const patch = { ...parsed.data };
+  if (patch.public_url == null || patch.public_url === '') delete patch.public_url;
+  const { error: upErr } = await sb.from('events').update(patch).eq('id', id);
   if (upErr) {
     console.error('events update', upErr);
     return NextResponse.json({ error: 'db_error' }, { status: 500 });

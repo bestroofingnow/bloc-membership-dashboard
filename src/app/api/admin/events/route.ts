@@ -49,7 +49,8 @@ export async function POST(req: Request) {
       ends_at: p.ends_at,
       location_name: p.location_name,
       location_address: p.location_address,
-      public_url: p.public_url ?? null,
+      // Only reference public_url when set — keeps inserts working before migration 030.
+      ...(p.public_url ? { public_url: p.public_url } : {}),
       ics_uid,
       public_visible: p.public_visible,
     })
