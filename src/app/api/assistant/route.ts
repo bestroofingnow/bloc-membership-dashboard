@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimit } from '@/lib/guest/rate-limit';
-import { searchMembers, directoryStats, recruitingNeeds } from '@/lib/assistant/directory';
+import { searchMembers, directoryStats, recruitingNeeds, getMember } from '@/lib/assistant/directory';
 import { resolveAssistantConfig } from '@/lib/assistant/config';
 
 export const runtime = 'nodejs';
@@ -16,6 +16,7 @@ HOW TO ANSWER:
 - There is no exact "profession" field. For a profession question (e.g. "a banker", "who does insurance"), call search_members with a relevant keyword (e.g. "bank", "insurance") — it also matches the business description. Some members have a sparse profile, so if results look thin, mention that.
 - The five chapters are North, South, Uptown, FLOC, and Alumni, plus an "After Hours" wait-list tier.
 - Use recruiting_needs to answer "who/what do we need" — the open recruiting target categories not yet filled.
+- For a question about ONE specific person or their company ("tell me about Jane", "what does Jane's business do"), call get_member with their name and answer from the description.
 - Be concise and friendly. List people as "Name — Company (Chapter)". If a question is outside the member directory (and not friendly small talk about BLOC), say it's outside what you can help with.`;
 
 const TOOLS = [
@@ -54,6 +55,20 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'get_member',
+      description: 'Look up a specific member by name to get their full business profile — company, chapter, industry, title, website, and a description of what their business does. Use for "tell me about <name>" or "what does <name>/<their company> do".',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Full or partial member name, e.g. "Amanda Hoffmann" or "Turner".' },
+        },
+        required: ['name'],
+      },
+    },
+  },
 ];
 
 async function runTool(name: string, input: Record<string, unknown>, token: string): Promise<string> {
@@ -63,6 +78,10 @@ async function runTool(name: string, input: Record<string, unknown>, token: stri
         chapter: typeof input.chapter === 'string' ? input.chapter : null,
         query: typeof input.query === 'string' ? input.query : null,
       });
+      return JSON.stringify({ count: rows.length, members: rows });
+    }
+    if (name === 'get_member') {
+      const rows = await getMember(token, typeof input.name === 'string' ? input.name : null);
       return JSON.stringify({ count: rows.length, members: rows });
     }
     if (name === 'directory_stats') return JSON.stringify(await directoryStats(token));
