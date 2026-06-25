@@ -19,12 +19,13 @@ const CHAPTERS = ['North', 'South', 'Uptown', 'FLOC', 'Alumni'];
 const SYSTEM_PROMPT = `You read notification emails from a membership system (Wild Apricot) for "Business Leaders of Charlotte" (BLOC) and extract structured data.
 
 Classify the email's "kind":
-- "application": a NEW membership application / sign-up was submitted by a prospective member, OR a notification that someone is now PENDING approval. The person is NOT yet an approved member.
-- "acceptance": a membership was APPROVED / ACTIVATED / accepted — the person is now (or just became) a paying/active member.
-- "unknown": anything else (event RSVPs, receipts, password resets, newsletters, generic admin notices). When unsure, use "unknown".
+- "application": a NEW membership application/sign-up was submitted, OR the person is now PENDING approval/awaiting review. Cues: "application submitted/received", "applied for membership", "pending approval", "awaiting review", "new applicant", status set to "Pending". The person is NOT yet an approved member.
+- "acceptance": a membership was APPROVED/ACTIVATED/accepted — they are now an active member. Cues: "membership approved", "membership enabled/activated", "now active", "welcome to BLOC", status changed to "Active".
+- "unknown": anything else (event RSVPs/registrations, receipts/invoices/payments, password resets, newsletters, generic admin notices). When unsure, use "unknown".
 
-Extract the PROSPECT/MEMBER the email is about (not BLOC staff, not the system sender):
-- name, email, company, phone, chapter (one of North, South, Uptown, FLOC, Alumni, or null if not stated).
+Extract the PROSPECT/MEMBER the email is about — the applicant, NOT BLOC staff, NOT the system sender, NOT the admin being notified:
+- name, email, company, phone.
+- chapter: one of North, South, Uptown, FLOC, Alumni, or null. Infer it from any chapter / membership-level / group name in the email — e.g. "BLOC-North" or "North" → North, "BLOC-Uptown" → Uptown, "FLOC" or "Future Leaders" → FLOC, "Alumni" → Alumni, "South" → South.
 
 Return ONLY a JSON object with exactly these keys:
 {"kind":"application|acceptance|unknown","name":"","email":"","company":"","phone":"","chapter":"","confidence":0.0,"summary":""}
