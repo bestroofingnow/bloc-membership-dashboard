@@ -61,6 +61,28 @@ export async function searchMembers(
   return (data ?? []) as DirectoryMatch[];
 }
 
+/**
+ * Look up specific members by (partial) name, returning the full business profile
+ * — including the description of what their business does. For "tell me about
+ * <name>" / "what does <name>'s company do" questions.
+ */
+export async function getMember(
+  token: string,
+  name: string | null | undefined,
+): Promise<DirectoryMatch[]> {
+  const term = (name ?? '').replace(/[%,()]/g, ' ').trim();
+  if (!term) return [];
+  const sb = callerClient(token);
+  const { data, error } = await sb
+    .from('member_directory')
+    .select(BUSINESS_COLUMNS)
+    .ilike('name', `%${term}%`)
+    .order('name', { ascending: true })
+    .limit(8);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as DirectoryMatch[];
+}
+
 export async function directoryStats(
   token: string,
 ): Promise<{ total: number; without_industry: number; by_chapter: Record<string, number> }> {
