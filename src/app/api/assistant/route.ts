@@ -28,8 +28,8 @@ const TOOLS = [
       parameters: {
         type: 'object',
         properties: {
-          chapter: { type: 'string', enum: ['North', 'South', 'Uptown', 'FLOC', 'Alumni'], description: 'Limit to one chapter. Omit to search all.' },
-          query: { type: 'string', description: 'Keyword to match against industry/company/title/name, e.g. "bank", "insurance".' },
+          chapter: { type: 'string', enum: ['North', 'South', 'Uptown', 'FLOC', 'Alumni', 'After Hours'], description: 'Limit to one chapter, or "After Hours" for the wait-list tier. Omit to search all.' },
+          query: { type: 'string', description: 'Keyword(s) to match against industry/company/title/name and the business description, e.g. "bank", "insurance", "commercial real estate".' },
         },
       },
     },

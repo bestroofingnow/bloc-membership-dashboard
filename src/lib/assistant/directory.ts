@@ -42,7 +42,10 @@ export async function searchMembers(
   const sb = callerClient(token);
   let q = sb.from('member_directory').select(BUSINESS_COLUMNS);
 
-  if (args.chapter && CHAPTERS.includes(args.chapter)) {
+  if (args.chapter === 'After Hours') {
+    // The After Hours tier isn't a chapter — those members have a null chapter.
+    q = q.eq('member_type', 'after_hours');
+  } else if (args.chapter && CHAPTERS.includes(args.chapter)) {
     q = q.eq('chapter', args.chapter);
   }
   if (args.query) {
