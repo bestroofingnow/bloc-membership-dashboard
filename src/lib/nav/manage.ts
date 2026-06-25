@@ -13,6 +13,7 @@ export const MANAGE_TOOLS: ManageToolMeta[] = [
   { key: 'intake', label: 'Guest Inbox', adminOnly: false },
   { key: 'membership', label: 'Membership Inbox', adminOnly: false },
   { key: 'events', label: 'Events', adminOnly: false },
+  { key: 'resources', label: 'Resources', adminOnly: false },
   { key: 'qr', label: 'QR Codes', adminOnly: false },
   { key: 'roster', label: 'Roster', adminOnly: false },
   { key: 'seats', label: 'Category Seats', adminOnly: false },

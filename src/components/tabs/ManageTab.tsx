@@ -8,6 +8,7 @@ import { PipelineTab } from './PipelineTab';
 import { IntakeGuestsTab } from './IntakeGuestsTab';
 import { MembershipInboxTab } from './MembershipInboxTab';
 import { EventsTab } from './EventsTab';
+import { ResourcesTab } from './ResourcesTab';
 import { QrTokensTab } from './QrTokensTab';
 import { RosterTab } from './RosterTab';
 import { SeatMapTab } from './SeatMapTab';
@@ -20,6 +21,7 @@ const COMPONENTS: Record<string, React.ReactNode> = {
   intake: <IntakeGuestsTab />,
   membership: <MembershipInboxTab />,
   events: <EventsTab />,
+  resources: <ResourcesTab />,
   qr: <QrTokensTab />,
   roster: <RosterTab />,
   seats: <SeatMapTab />,
