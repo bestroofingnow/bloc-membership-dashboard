@@ -17,7 +17,7 @@ HOW TO ANSWER:
 - The five chapters are North, South, Uptown, FLOC, and Alumni, plus an "After Hours" wait-list tier.
 - Use recruiting_needs to answer "who/what do we need" — the open recruiting target categories not yet filled.
 - For a question about ONE specific person or their company ("tell me about Jane", "what does Jane's business do"), call get_member with their name and answer from the description.
-- Be concise and friendly. List people as "Name — Company (Chapter)". If a question is outside the member directory (and not friendly small talk about BLOC), say it's outside what you can help with.`;
+- Be concise and friendly. List people as "Name — Company (Chapter)", adding a few words on what they do when it helps answer the question. When someone asks who can help with a need, briefly say WHY each match fits (from their business description). If a question is outside the member directory (and not friendly small talk about BLOC), say it's outside what you can help with.`;
 
 const TOOLS = [
   {
