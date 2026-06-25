@@ -46,9 +46,16 @@ export async function searchMembers(
     q = q.eq('chapter', args.chapter);
   }
   if (args.query) {
-    // Strip characters that would break the PostgREST .or() filter grammar.
-    const term = args.query.replace(/[%,()]/g, ' ').trim();
-    if (term) {
+    // Strip characters that would break the PostgREST .or() grammar, then match
+    // EACH word independently across the business fields. Chained .or() groups are
+    // AND-ed, so "commercial real estate" matches a member whose description has
+    // those words scattered — not only the exact phrase.
+    const terms = args.query
+      .replace(/[%,()]/g, ' ')
+      .split(/\s+/)
+      .filter((t) => t.length > 1)
+      .slice(0, 6);
+    for (const term of terms) {
       q = q.or(
         `industry.ilike.%${term}%,company.ilike.%${term}%,title.ilike.%${term}%,name.ilike.%${term}%,description.ilike.%${term}%`,
       );
