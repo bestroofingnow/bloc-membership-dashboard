@@ -2,11 +2,75 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimit } from '@/lib/guest/rate-limit';
 import { searchMembers, directoryStats, recruitingNeeds, getMember } from '@/lib/assistant/directory';
-import { resolveAssistantConfig } from '@/lib/assistant/config';
+import { resolveAssistantConfig, type AssistantConfig } from '@/lib/assistant/config';
 
 export const runtime = 'nodejs';
 
 const MAX_TOOL_ROUNDS = 4;
+/** Statuses worth retrying (transient): rate-limit, gateway, and server errors. */
+const TRANSIENT_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
+/** Abort a single model call if it hangs, so we can retry/fall back instead of timing out the request. */
+const MODEL_TIMEOUT_MS = 25_000;
+
+interface ChatCompletion {
+  choices?: Array<{
+    message?: {
+      content?: string | null;
+      tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
+    };
+  }>;
+}
+
+/**
+ * Call the OpenAI-compatible chat-completions endpoint with resilience so a
+ * momentary Groq hiccup doesn't surface as an error to the member: for each
+ * model in [primary, ...fallbacks] (starting at `fromIdx`), retry transient
+ * (429/5xx/network/timeout) failures a few times with backoff before degrading
+ * to the next model. Returns the parsed completion + the index of the model that
+ * answered (so the caller can stick with it for later tool rounds), or throws
+ * after the whole chain is exhausted.
+ */
+async function chatCompletion(
+  cfg: AssistantConfig,
+  messages: Array<Record<string, unknown>>,
+  fromIdx: number,
+): Promise<{ data: ChatCompletion; modelIdx: number }> {
+  const models = [cfg.model, ...cfg.fallbackModels];
+  let lastErr = 'unknown error';
+  for (let idx = Math.min(Math.max(fromIdx, 0), models.length - 1); idx < models.length; idx++) {
+    const model = models[idx];
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), MODEL_TIMEOUT_MS);
+      try {
+        const resp = await fetch(`${cfg.baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
+          body: JSON.stringify({
+            model,
+            messages,
+            tools: TOOLS,
+            tool_choice: 'auto',
+            temperature: 0.2,
+            max_tokens: 1024,
+          }),
+          signal: ctrl.signal,
+        });
+        clearTimeout(timer);
+        if (resp.ok) return { data: (await resp.json()) as ChatCompletion, modelIdx: idx };
+        lastErr = `${resp.status} ${(await resp.text()).slice(0, 200)}`;
+        console.error('assistant: model error', model, lastErr);
+        if (!TRANSIENT_STATUS.has(resp.status)) break; // non-transient → don't retry this model; try the next
+      } catch (e) {
+        clearTimeout(timer);
+        lastErr = e instanceof Error ? e.message : String(e);
+        console.error('assistant: fetch failed', model, lastErr);
+      }
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 250 * (attempt + 1))); // 250ms, 500ms backoff
+    }
+  }
+  throw new Error(lastErr);
+}
 
 const SYSTEM_PROMPT = `You are the BLOC (Business Leaders of Charlotte) directory assistant, helping a logged-in member find other members and answer simple questions about the network.
 
@@ -145,34 +209,15 @@ export async function POST(request: Request) {
   ];
 
   try {
+    let modelIdx = 0; // stick with the first model that works across tool rounds
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const resp = await fetch(`${cfg.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
-        body: JSON.stringify({
-          model: cfg.model,
-          messages,
-          tools: TOOLS,
-          tool_choice: 'auto',
-          temperature: 0.2,
-          max_tokens: 1024,
-        }),
-      });
-
-      if (!resp.ok) {
-        const errText = await resp.text();
-        console.error('assistant: model error', resp.status, errText.slice(0, 500));
-        return NextResponse.json({ error: 'The assistant had trouble responding. Please try again.' }, { status: 502 });
-      }
-
-      const data = await resp.json();
-      const msg = data?.choices?.[0]?.message as
-        | { content?: string | null; tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }> }
-        | undefined;
+      const { data, modelIdx: usedIdx } = await chatCompletion(cfg, messages, modelIdx);
+      modelIdx = usedIdx;
+      const msg = data.choices?.[0]?.message;
       const toolCalls = msg?.tool_calls ?? [];
 
       if (toolCalls.length > 0) {
-        messages.push(msg as Record<string, unknown>); // assistant turn that requested the tools
+        messages.push(msg as unknown as Record<string, unknown>); // assistant turn that requested the tools
         for (const tc of toolCalls) {
           let args: Record<string, unknown> = {};
           try { args = JSON.parse(tc.function.arguments || '{}'); } catch { args = {}; }
@@ -188,7 +233,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ answer: 'That took too many steps — try asking a more specific question.' });
   } catch (e) {
+    // Whole model chain (primary + fallbacks, each retried) failed — almost always a
+    // transient Groq incident. Tell the member it's momentary, not broken.
     console.error('assistant route error', e);
-    return NextResponse.json({ error: 'The assistant is unavailable right now. Please try again.' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Ask BLOC is briefly unavailable — please try again in a moment.' },
+      { status: 502 },
+    );
   }
 }
