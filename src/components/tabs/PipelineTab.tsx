@@ -18,6 +18,10 @@ import {
   ArrowRight,
   XCircle,
   Save,
+  MessageSquare,
+  Vote,
+  Gavel,
+  UserCheck,
 } from 'lucide-react';
 import { Card, Badge, Button, Modal, Input, useToast } from '@/components/ui';
 import { pipelineStages, getNextStepText } from '@/data/guests';
@@ -38,6 +42,9 @@ const stageIcons: Record<string, React.ReactNode> = {
   'Lunch Done': <MapPin size={16} />,
   'Application Sent': <FileText size={16} />,
   'Application Received': <FileText size={16} />,
+  'Membership Interview': <MessageSquare size={16} />,
+  'Membership Vote': <Vote size={16} />,
+  'Board Vote': <Gavel size={16} />,
   Approved: <CheckCircle size={16} />,
 };
 
@@ -118,12 +125,17 @@ function GuestCard({
   onAdvance,
   onEdit,
   onInvite,
+  onConvert,
+  converting,
 }: {
   guest: Guest;
   onAdvance: () => void;
   onEdit: () => void;
   onInvite: () => void;
+  onConvert: () => void;
+  converting: boolean;
 }) {
+  const isApproved = guest.status === 'Approved';
   return (
     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-3">
@@ -159,10 +171,26 @@ function GuestCard({
         <p className="text-xs font-semibold text-amber-600 uppercase">
           Next: {guest.nextStep}
         </p>
-        <Button size="sm" variant="primary" onClick={onAdvance} className="w-full">
-          <span>Advance</span>
-          <ChevronRight size={14} className="ml-1" />
-        </Button>
+        {isApproved ? (
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={onConvert}
+            disabled={converting}
+            className="w-full bg-emerald-600 hover:bg-emerald-700"
+          >
+            {converting ? (
+              <><Loader2 size={14} className="mr-1 animate-spin" /> Converting…</>
+            ) : (
+              <><UserCheck size={14} className="mr-1" /> Convert to Member</>
+            )}
+          </Button>
+        ) : (
+          <Button size="sm" variant="primary" onClick={onAdvance} className="w-full">
+            <span>Advance</span>
+            <ChevronRight size={14} className="ml-1" />
+          </Button>
+        )}
         {guest.email && (
           <button
             type="button"
@@ -178,7 +206,7 @@ function GuestCard({
 }
 
 export function PipelineTab() {
-  const { guests, loading, error, addGuest, updateGuest, advanceGuest, deleteGuest } = useGuests();
+  const { guests, loading, error, addGuest, updateGuest, advanceGuest, deleteGuest, refetch } = useGuests();
   const { boardMembers } = useBoardMembers();
   const { signups, loading: signupsLoading, promoteToGuest, dismissSignup } = useSignups();
   const { canEdit, isAdmin } = useAuth();
@@ -188,6 +216,7 @@ export function PipelineTab() {
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processingSignupId, setProcessingSignupId] = useState<string | null>(null);
+  const [convertingId, setConvertingId] = useState<string | null>(null);
 
   // Event invite modal state
   const { events } = useEvents();
@@ -207,9 +236,12 @@ export function PipelineTab() {
     phone: '',
   });
 
+  // Guests converted to members drop off the prospect board (kept in the DB for history).
+  const activeGuests = guests.filter((g) => !g.convertedMemberId);
+  const convertedCount = guests.length - activeGuests.length;
   const guestsByStage = pipelineStages.map((stage) => ({
     ...stage,
-    guests: guests.filter((g) => g.status === stage.status),
+    guests: activeGuests.filter((g) => g.status === stage.status),
   }));
 
   const handleAdvance = async (guest: Guest) => {
@@ -217,6 +249,31 @@ export function PipelineTab() {
     setIsSubmitting(true);
     await advanceGuest(guest.id);
     setIsSubmitting(false);
+  };
+
+  const handleConvert = async (guest: Guest) => {
+    if (!canEdit) return;
+    setConvertingId(guest.id);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      const res = await fetch(`/api/admin/guests/${guest.id}/convert`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({}),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(`Convert failed: ${body?.error ?? `error_${res.status}`}`);
+      } else {
+        toast.success(`${guest.name} is now a member 🎉`);
+        await refetch();
+      }
+    } catch (e) {
+      toast.error(`Network error: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setConvertingId(null);
+    }
   };
 
   const handleAddGuest = async () => {
@@ -376,37 +433,41 @@ export function PipelineTab() {
       )}
 
       {/* Pipeline Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <Card className="text-center" padding="sm">
-          <p className="text-2xl font-bold text-slate-900">{guests.length}</p>
-          <p className="text-xs text-slate-500">Total Guests</p>
+          <p className="text-2xl font-bold text-slate-900">{activeGuests.length}</p>
+          <p className="text-xs text-slate-500">Active Guests</p>
         </Card>
         <Card className="text-center" padding="sm">
           <p className="text-2xl font-bold text-blue-600">
-            {guests.filter((g) => g.status.includes('After Hours')).length}
+            {activeGuests.filter((g) => g.status.includes('After Hours')).length}
           </p>
           <p className="text-xs text-slate-500">At After Hours</p>
         </Card>
         <Card className="text-center" padding="sm">
           <p className="text-2xl font-bold text-purple-600">
-            {guests.filter((g) => g.status.includes('Lunch')).length}
+            {activeGuests.filter((g) => g.status.includes('Lunch')).length}
           </p>
           <p className="text-xs text-slate-500">At Lunch Stage</p>
         </Card>
         <Card className="text-center" padding="sm">
           <p className="text-2xl font-bold text-emerald-600">
-            {guests.filter((g) => g.status.includes('Application')).length}
+            {activeGuests.filter((g) => ['Application Sent', 'Application Received', 'Membership Interview', 'Membership Vote', 'Board Vote'].includes(g.status)).length}
           </p>
-          <p className="text-xs text-slate-500">In Application</p>
+          <p className="text-xs text-slate-500">In Review</p>
+        </Card>
+        <Card className="text-center" padding="sm">
+          <p className="text-2xl font-bold text-bloc-blue">{convertedCount}</p>
+          <p className="text-xs text-slate-500">Became Members</p>
         </Card>
       </div>
 
-      {/* Pipeline Columns */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+      {/* Pipeline Columns — horizontal scroll keeps the full ladder readable */}
+      <div className="flex gap-4 overflow-x-auto pb-3 -mx-1 px-1">
         {displayStages.map((stage) => (
           <div
             key={stage.status}
-            className={`rounded-xl p-4 min-h-[300px] ${stage.color}`}
+            className={`rounded-xl p-4 min-h-[300px] w-72 flex-shrink-0 ${stage.color}`}
           >
             <div className="flex items-center gap-2 mb-4">
               <span className="text-slate-600">{stageIcons[stage.status]}</span>
@@ -428,6 +489,8 @@ export function PipelineTab() {
                   guest={guest}
                   onAdvance={() => handleAdvance(guest)}
                   onEdit={() => handleEditGuest(guest)}
+                  onConvert={() => handleConvert(guest)}
+                  converting={convertingId === guest.id}
                   onInvite={() => {
                     setInviteGuest(guest);
                     setInviteEventId('');

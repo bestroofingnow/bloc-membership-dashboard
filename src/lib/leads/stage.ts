@@ -44,6 +44,9 @@ export function mapKanbanStage(status: string): LeadStage {
       return 'attended';
     case 'Application Sent':
     case 'Application Received':
+    case 'Membership Interview':
+    case 'Membership Vote':
+    case 'Board Vote':
       return 'applied';
     case 'Approved':
       return 'approved';

@@ -96,3 +96,61 @@ export async function promoteToMember(
 
   return { memberId, leadId };
 }
+
+/**
+ * Convert an Approved pipeline guest into a member: upsert the members row (match by
+ * email; never clobber an existing member) and advance the guest's lead to 'member'.
+ * Mirrors promoteToMember but credited to the `guests` source. Idempotent.
+ */
+export async function convertGuestToMember(
+  sb: SupabaseClient,
+  guestId: string,
+  p: MembershipPerson,
+): Promise<PromoteResult> {
+  const email = p.email?.trim().toLowerCase() || null;
+
+  let memberId: string | null = null;
+  if (email) {
+    const { data: existing } = await sb.from('members').select('id').eq('email', email).limit(1);
+    if (existing && existing.length > 0) memberId = existing[0].id as string;
+  }
+
+  if (!memberId) {
+    const { data: inserted, error } = await sb
+      .from('members')
+      .insert([{
+        name: p.name?.trim() || 'New Member',
+        company: p.company?.trim() || 'Unknown',
+        chapter: p.chapter || 'North',
+        industry: 'Other',
+        email,
+        phone: p.phone?.trim() || null,
+      }])
+      .select('id')
+      .single();
+    if (error) {
+      console.error('convertGuestToMember: member insert failed', error.message);
+    } else {
+      memberId = inserted?.id ?? null;
+    }
+  }
+
+  const leadId = await linkLead(sb, {
+    source_table: 'guests',
+    source_id: guestId,
+    email,
+    name: p.name ?? null,
+    company: p.company ?? null,
+    phone: p.phone ?? null,
+    source: 'manual',
+    stage: 'member',
+    matched_member_id: memberId,
+    note: 'approved guest converted to member',
+  });
+
+  if (leadId && memberId) {
+    await sb.from('leads').update({ converted_member_id: memberId }).eq('id', leadId);
+  }
+
+  return { memberId, leadId };
+}

@@ -28,7 +28,7 @@ describe('LEAD_STAGES + stageRank()', () => {
   });
 });
 
-describe('mapKanbanStage() — 8 legacy guests.status values onto the ladder', () => {
+describe('mapKanbanStage() — legacy guests.status values onto the ladder', () => {
   test('each legacy status maps to the spec-defined canonical stage', () => {
     expect(mapKanbanStage('New Lead')).toBe('new');
     expect(mapKanbanStage('After Hours Invited')).toBe('rsvp');
@@ -39,6 +39,14 @@ describe('mapKanbanStage() — 8 legacy guests.status values onto the ladder', (
     expect(mapKanbanStage('Application Received')).toBe('applied');
     expect(mapKanbanStage('Approved')).toBe('approved');
     expect(mapKanbanStage('Declined')).toBe('declined');
+  });
+
+  test('the membership-review stages (interview, votes) are still "applied"', () => {
+    // These sit between Application Received and Approved on the kanban; on the
+    // canonical funnel they remain "applied" (in review, not yet approved).
+    expect(mapKanbanStage('Membership Interview')).toBe('applied');
+    expect(mapKanbanStage('Membership Vote')).toBe('applied');
+    expect(mapKanbanStage('Board Vote')).toBe('applied');
   });
 
   test('unrecognized status falls back to new (never throws)', () => {
