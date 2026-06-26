@@ -100,6 +100,9 @@ export const pipelineStages: { status: GuestStatus; label: string; color: string
   { status: 'Lunch Done', label: 'Lunch Attended', color: 'bg-purple-50' },
   { status: 'Application Sent', label: 'App Sent', color: 'bg-green-50' },
   { status: 'Application Received', label: 'App Received', color: 'bg-emerald-50' },
+  { status: 'Membership Interview', label: 'Interview', color: 'bg-teal-50' },
+  { status: 'Membership Vote', label: 'Membership Vote', color: 'bg-cyan-50' },
+  { status: 'Board Vote', label: 'Board Vote', color: 'bg-sky-50' },
   { status: 'Approved', label: 'Approved', color: 'bg-emerald-100' },
 ];
 
@@ -125,9 +128,15 @@ export function getNextStepText(status: GuestStatus): string {
     case 'Application Sent':
       return 'Follow up on Application';
     case 'Application Received':
-      return 'Schedule Board Review';
+      return 'Schedule Membership Interview';
+    case 'Membership Interview':
+      return 'Membership Committee Vote';
+    case 'Membership Vote':
+      return 'Send to Board for Vote';
+    case 'Board Vote':
+      return 'Record Board Decision';
     case 'Approved':
-      return 'Welcome New Member!';
+      return 'Convert to Member';
     default:
       return 'Review Status';
   }

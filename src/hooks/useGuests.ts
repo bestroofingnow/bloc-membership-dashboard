@@ -20,6 +20,7 @@ function transformDbToGuest(row: any): Guest {
     status: row.status as GuestStatus,
     nextStep: row.next_step,
     notes: row.notes || '',
+    convertedMemberId: row.converted_member_id ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

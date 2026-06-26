@@ -84,6 +84,9 @@ export type GuestStatus =
   | 'Lunch Done'
   | 'Application Sent'
   | 'Application Received'
+  | 'Membership Interview'
+  | 'Membership Vote'
+  | 'Board Vote'
   | 'Approved'
   | 'Declined';
 
@@ -99,6 +102,8 @@ export interface Guest {
   email?: string;
   phone?: string;
   notes?: string;
+  /** Set once an Approved guest has been turned into a member (then they drop off the board). */
+  convertedMemberId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
