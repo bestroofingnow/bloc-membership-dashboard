@@ -8,6 +8,7 @@ export interface DirectoryMatch {
   title: string | null;
   website: string | null;
   description: string | null;
+  ideal_referral?: string | null;
 }
 
 // Business-only columns. We deliberately never select the opt-in personal fields
@@ -16,6 +17,17 @@ export interface DirectoryMatch {
 // `description` is the member's business summary (what they do), shown in the
 // directory, so the assistant can speak fluently about each business.
 const BUSINESS_COLUMNS = 'name, company, chapter, industry, title, website, description';
+
+// `ideal_referral` (migration 037: "who's a great intro for me") lets the assistant
+// answer "who is looking for a roofer?". Tolerate its absence so a deploy that lands
+// before the migration can't break the assistant — we detect once and stop asking.
+let idealReferralCol: boolean | null = null;
+function columnsWithIdeal(): string {
+  return idealReferralCol === false ? BUSINESS_COLUMNS : `${BUSINESS_COLUMNS}, ideal_referral`;
+}
+function isMissingIdeal(error: { code?: string; message?: string } | null): boolean {
+  return !!error && (error.code === '42703' || /ideal_referral/i.test(error.message ?? ''));
+}
 
 /**
  * A Supabase client scoped to the CALLER (anon key + the caller's JWT). Queries
@@ -35,12 +47,12 @@ function callerClient(token: string) {
 
 const CHAPTERS = ['North', 'South', 'Uptown', 'FLOC', 'Alumni'];
 
-export async function searchMembers(
-  token: string,
+async function runSearch(
+  sb: ReturnType<typeof callerClient>,
   args: { chapter?: string | null; query?: string | null; limit?: number },
-): Promise<DirectoryMatch[]> {
-  const sb = callerClient(token);
-  let q = sb.from('member_directory').select(BUSINESS_COLUMNS);
+  includeIdeal: boolean,
+) {
+  let q = sb.from('member_directory').select(includeIdeal ? columnsWithIdeal() : BUSINESS_COLUMNS);
 
   if (args.chapter === 'After Hours') {
     // The After Hours tier isn't a chapter — those members have a null chapter.
@@ -52,23 +64,36 @@ export async function searchMembers(
     // Strip characters that would break the PostgREST .or() grammar, then match
     // EACH word independently across the business fields. Chained .or() groups are
     // AND-ed, so "commercial real estate" matches a member whose description has
-    // those words scattered — not only the exact phrase.
+    // those words scattered — not only the exact phrase. When available, the member's
+    // "ideal referral" is searched too, so "who wants homeowner leads" can match.
     const terms = args.query
       .replace(/[%,()]/g, ' ')
       .split(/\s+/)
       .filter((t) => t.length > 1)
       .slice(0, 6);
     for (const term of terms) {
-      q = q.or(
-        `industry.ilike.%${term}%,company.ilike.%${term}%,title.ilike.%${term}%,name.ilike.%${term}%,description.ilike.%${term}%`,
-      );
+      const fields = `industry.ilike.%${term}%,company.ilike.%${term}%,title.ilike.%${term}%,name.ilike.%${term}%,description.ilike.%${term}%${includeIdeal ? `,ideal_referral.ilike.%${term}%` : ''}`;
+      q = q.or(fields);
     }
   }
-  q = q.order('name', { ascending: true }).limit(Math.min(Math.max(args.limit ?? 50, 1), 100));
+  return q.order('name', { ascending: true }).limit(Math.min(Math.max(args.limit ?? 50, 1), 100));
+}
 
-  const { data, error } = await q;
+export async function searchMembers(
+  token: string,
+  args: { chapter?: string | null; query?: string | null; limit?: number },
+): Promise<DirectoryMatch[]> {
+  const sb = callerClient(token);
+  const includeIdeal = idealReferralCol !== false;
+  let { data, error } = await runSearch(sb, args, includeIdeal);
+  if (error && includeIdeal && isMissingIdeal(error)) {
+    idealReferralCol = false; // column not migrated yet — fall back and stop asking
+    ({ data, error } = await runSearch(sb, args, false));
+  } else if (!error && includeIdeal) {
+    idealReferralCol = true;
+  }
   if (error) throw new Error(error.message);
-  return (data ?? []) as DirectoryMatch[];
+  return (data ?? []) as unknown as DirectoryMatch[];
 }
 
 /**
@@ -83,14 +108,23 @@ export async function getMember(
   const term = (name ?? '').replace(/[%,()]/g, ' ').trim();
   if (!term) return [];
   const sb = callerClient(token);
-  const { data, error } = await sb
-    .from('member_directory')
-    .select(BUSINESS_COLUMNS)
-    .ilike('name', `%${term}%`)
-    .order('name', { ascending: true })
-    .limit(8);
+  const run = (includeIdeal: boolean) =>
+    sb
+      .from('member_directory')
+      .select(includeIdeal ? columnsWithIdeal() : BUSINESS_COLUMNS)
+      .ilike('name', `%${term}%`)
+      .order('name', { ascending: true })
+      .limit(8);
+  const includeIdeal = idealReferralCol !== false;
+  let { data, error } = await run(includeIdeal);
+  if (error && includeIdeal && isMissingIdeal(error)) {
+    idealReferralCol = false;
+    ({ data, error } = await run(false));
+  } else if (!error && includeIdeal) {
+    idealReferralCol = true;
+  }
   if (error) throw new Error(error.message);
-  return (data ?? []) as DirectoryMatch[];
+  return (data ?? []) as unknown as DirectoryMatch[];
 }
 
 export async function directoryStats(
