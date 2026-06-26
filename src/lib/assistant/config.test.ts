@@ -35,4 +35,22 @@ describe('resolveAssistantConfig() — pick the (free, open-source) model host',
   test('a trailing slash on the base URL is trimmed', () => {
     expect(resolveAssistantConfig({ ASSISTANT_BASE_URL: 'https://host/v1/' }).baseUrl).toBe('https://host/v1');
   });
+
+  test('provides a default fallback model chain that excludes the primary', () => {
+    const c = resolveAssistantConfig({});
+    expect(c.fallbackModels.length).toBeGreaterThan(0);
+    expect(c.fallbackModels).not.toContain(c.model);
+  });
+
+  test('the primary is never duplicated in the fallback chain', () => {
+    const c = resolveAssistantConfig({
+      ASSISTANT_MODEL: 'llama-3.3-70b-versatile',
+      ASSISTANT_FALLBACK_MODELS: 'llama-3.3-70b-versatile, openai/gpt-oss-120b',
+    });
+    expect(c.fallbackModels).toEqual(['openai/gpt-oss-120b']);
+  });
+
+  test('ASSISTANT_FALLBACK_MODELS="" disables fallbacks', () => {
+    expect(resolveAssistantConfig({ ASSISTANT_FALLBACK_MODELS: '' }).fallbackModels).toEqual([]);
+  });
 });
