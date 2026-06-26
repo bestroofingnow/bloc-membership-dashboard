@@ -217,6 +217,8 @@ export function PipelineTab() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processingSignupId, setProcessingSignupId] = useState<string | null>(null);
   const [convertingId, setConvertingId] = useState<string | null>(null);
+  const [convertGuest, setConvertGuest] = useState<Guest | null>(null);
+  const [convertChapter, setConvertChapter] = useState('Uptown');
 
   // Event invite modal state
   const { events } = useEvents();
@@ -251,8 +253,15 @@ export function PipelineTab() {
     setIsSubmitting(false);
   };
 
-  const handleConvert = async (guest: Guest) => {
+  const openConvert = (guest: Guest) => {
     if (!canEdit) return;
+    setConvertGuest(guest);
+    setConvertChapter('Uptown');
+  };
+
+  const handleConvertConfirm = async () => {
+    if (!canEdit || !convertGuest) return;
+    const guest = convertGuest;
     setConvertingId(guest.id);
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -260,13 +269,14 @@ export function PipelineTab() {
       const res = await fetch(`/api/admin/guests/${guest.id}/convert`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ chapter: convertChapter }),
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) {
         toast.error(`Convert failed: ${body?.error ?? `error_${res.status}`}`);
       } else {
-        toast.success(`${guest.name} is now a member 🎉`);
+        toast.success(`${guest.name} is now a ${convertChapter} member 🎉`);
+        setConvertGuest(null);
         await refetch();
       }
     } catch (e) {
@@ -489,7 +499,7 @@ export function PipelineTab() {
                   guest={guest}
                   onAdvance={() => handleAdvance(guest)}
                   onEdit={() => handleEditGuest(guest)}
-                  onConvert={() => handleConvert(guest)}
+                  onConvert={() => openConvert(guest)}
                   converting={convertingId === guest.id}
                   onInvite={() => {
                     setInviteGuest(guest);
@@ -790,6 +800,56 @@ export function PipelineTab() {
                   <><Loader2 size={14} className="mr-2 animate-spin" /> Sending…</>
                 ) : (
                   <><Mail size={14} className="mr-2" /> Send invite</>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Convert to Member Modal */}
+      <Modal
+        isOpen={convertGuest !== null}
+        onClose={() => setConvertGuest(null)}
+        title={convertGuest ? `Make ${convertGuest.name} a member` : 'Convert to member'}
+        size="md"
+      >
+        {convertGuest && (
+          <div className="space-y-4">
+            <div className="rounded border bg-slate-50 p-3 text-sm">
+              <div><strong>{convertGuest.name}</strong> · {convertGuest.company}</div>
+              {convertGuest.email && <div className="text-slate-600">{convertGuest.email}</div>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Chapter</label>
+              <select
+                value={convertChapter}
+                onChange={(e) => setConvertChapter(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
+              >
+                {['North', 'South', 'Uptown', 'FLOC', 'Alumni'].map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-xs text-slate-500">
+                Creates a member record (matched by email if one already exists). You can fine-tune
+                their profile afterward in Roster.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setConvertGuest(null)}>Cancel</Button>
+              <Button
+                variant="primary"
+                className="bg-emerald-600 hover:bg-emerald-700"
+                disabled={convertingId === convertGuest.id}
+                onClick={handleConvertConfirm}
+              >
+                {convertingId === convertGuest.id ? (
+                  <><Loader2 size={14} className="mr-2 animate-spin" /> Converting…</>
+                ) : (
+                  <><UserCheck size={14} className="mr-2" /> Make member</>
                 )}
               </Button>
             </div>
