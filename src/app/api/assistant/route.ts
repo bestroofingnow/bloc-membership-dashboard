@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimit } from '@/lib/guest/rate-limit';
-import { searchMembers, directoryStats, recruitingNeeds, getMember } from '@/lib/assistant/directory';
+import { searchMembers, directoryStats, recruitingNeeds, getMember, knowledgeSearch } from '@/lib/assistant/directory';
 import { resolveAssistantConfig, type AssistantConfig } from '@/lib/assistant/config';
 
 export const runtime = 'nodejs';
@@ -78,6 +78,7 @@ HOW TO ANSWER:
 - ALWAYS use the tools to get facts. NEVER invent, guess, or recall members from memory. If a tool returns no matches, say so plainly and suggest a broader search.
 - You can only see BUSINESS information (name, company, chapter, industry, title, website, a short business description of what they do, and their stated "ideal referral" — the kind of customer or introduction they're looking for). Use the description to speak specifically about what a member's business does, and the ideal referral to answer "who is looking for ___" / "who wants ___ leads" (search_members matches that field too). You must NEVER provide or guess personal contact details (cell phone, home address, birthday, personal email); if asked, say those are private and the member should open that person's profile or reach out directly.
 - There is no exact "profession" field. For a profession question (e.g. "a banker", "who does insurance"), call search_members with a relevant keyword (e.g. "bank", "insurance") — it also matches the business description. Some members have a sparse profile, so if results look thin, mention that.
+- For a NEED or PROBLEM stated in plain language ("who can help me retire", "I need someone for my back pain", "looking to buy a house", "get in shape"), call knowledge_search with that need — it matches members by meaning even when keywords don't line up. Use search_members instead when the user names an explicit industry/keyword or a chapter.
 - The five chapters are North, South, Uptown, FLOC, and Alumni, plus an "After Hours" wait-list tier.
 - Use recruiting_needs to answer "who/what do we need" — the open recruiting target categories not yet filled.
 - For a question about ONE specific person or their company ("tell me about Jane", "what does Jane's business do"), call get_member with their name and answer from the description.
@@ -122,6 +123,20 @@ const TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'knowledge_search',
+      description: "Semantic search across BLOC members by MEANING or NEED, not keywords. Use this for fuzzy, conceptual, or problem-based questions where a keyword search is weak — e.g. \"who can help me retire\", \"I need someone for my back pain\", \"who could help me buy a house\", \"I want to get in shape\". It finds members whose business fits the need even when the words don't match. Prefer search_members for an explicit industry/keyword or a chapter filter.",
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: "The member's need or situation in natural language, e.g. \"help lowering my taxes\" or \"planning for retirement\"." },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'get_member',
       description: 'Look up a specific member by name to get their full business profile — company, chapter, industry, title, website, and a description of what their business does. Use for "tell me about <name>" or "what does <name>/<their company> do".',
       parameters: {
@@ -147,6 +162,10 @@ async function runTool(name: string, input: Record<string, unknown>, token: stri
     if (name === 'get_member') {
       const rows = await getMember(token, typeof input.name === 'string' ? input.name : null);
       return JSON.stringify({ count: rows.length, members: rows });
+    }
+    if (name === 'knowledge_search') {
+      const matches = await knowledgeSearch(typeof input.query === 'string' ? input.query : '');
+      return JSON.stringify({ count: matches.length, matches: matches.map((m) => m.content) });
     }
     if (name === 'directory_stats') return JSON.stringify(await directoryStats(token));
     if (name === 'recruiting_needs') {

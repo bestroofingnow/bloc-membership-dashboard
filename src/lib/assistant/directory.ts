@@ -79,6 +79,36 @@ async function runSearch(
   return q.order('name', { ascending: true }).limit(Math.min(Math.max(args.limit ?? 50, 1), 100));
 }
 
+export interface KnowledgeMatch {
+  content: string;
+  similarity: number;
+  member_id: string | null;
+}
+
+/**
+ * Semantic (vector) search over the RAG knowledge base via the kb-embed Edge Function
+ * (gte-small). Used for fuzzy / by-need questions where keyword search is weak. Auths
+ * to the function with the service-role key the assistant already has — no extra env.
+ * Returns [] if the knowledge base isn't set up, so the assistant degrades gracefully.
+ */
+export async function knowledgeSearch(query: string, matchCount = 6): Promise<KnowledgeMatch[]> {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!base || !serviceKey || !query.trim()) return [];
+  try {
+    const resp = await fetch(`${base}/functions/v1/kb-embed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceKey}` },
+      body: JSON.stringify({ mode: 'search', text: query, match_count: matchCount }),
+    });
+    if (!resp.ok) return [];
+    const data = (await resp.json()) as { matches?: KnowledgeMatch[] };
+    return data.matches ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function searchMembers(
   token: string,
   args: { chapter?: string | null; query?: string | null; limit?: number },
