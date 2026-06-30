@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { getServerSupabase } from '@/lib/guest/supabase-server';
+import { rateLimit } from '@/lib/guest/rate-limit';
 import { validateIdealReferral, IDEAL_REFERRAL_MAX } from '@/lib/members/idealReferral';
 
 const schema = z.object({
@@ -28,6 +29,9 @@ export async function POST(req: Request) {
   });
   const { data: userData, error: userErr } = await authClient.auth.getUser(token);
   if (userErr || !userData?.user?.email) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const ok = await rateLimit({ bucket: `ideal:${userData.user.id}`, limit: 20, windowSeconds: 60 });
+  if (!ok) return NextResponse.json({ error: 'Too many updates. Please wait a minute.' }, { status: 429 });
 
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
