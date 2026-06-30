@@ -2,8 +2,17 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { getServerSupabase } from '@/lib/guest/supabase-server';
+import { rateLimit } from '@/lib/guest/rate-limit';
 
 export const runtime = 'nodejs';
+
+/** True if the bytes start with a JPEG (FF D8 FF) or PNG (89 50 4E 47) signature. */
+function looksLikeImage(b: Buffer): boolean {
+  if (b.length < 4) return false;
+  const jpeg = b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+  const png = b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47;
+  return jpeg || png;
+}
 
 // ~2.7MB of base64 ≈ a ~2MB JPEG; the app resizes to ~512px first, so this is a ceiling.
 const schema = z.object({ image_base64: z.string().min(32).max(3_500_000) });
@@ -27,6 +36,10 @@ export async function POST(req: Request) {
   const { data: userData, error: userErr } = await authClient.auth.getUser(token);
   if (userErr || !userData?.user?.email) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
+  // Throttle uploads (each is up to ~2MB into Storage).
+  const ok = await rateLimit({ bucket: `photo:${userData.user.id}`, limit: 12, windowSeconds: 60 });
+  if (!ok) return NextResponse.json({ error: 'Too many uploads. Please wait a minute.' }, { status: 429 });
+
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
 
@@ -37,7 +50,9 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: 'bad_image' }, { status: 400 });
   }
-  if (bytes.length < 100) return NextResponse.json({ error: 'bad_image' }, { status: 400 });
+  if (bytes.length < 100 || !looksLikeImage(bytes)) {
+    return NextResponse.json({ error: 'bad_image' }, { status: 400 });
+  }
 
   const sb = getServerSupabase();
   const { data: memRow } = await sb

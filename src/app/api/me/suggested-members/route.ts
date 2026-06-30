@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServerSupabase } from '@/lib/guest/supabase-server';
 import { knowledgeSearch } from '@/lib/assistant/directory';
+import { rateLimit } from '@/lib/guest/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -24,6 +25,10 @@ export async function POST(req: Request) {
   const authClient = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: userData, error: userErr } = await authClient.auth.getUser(token);
   if (userErr || !userData?.user?.email) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  // Each call embeds a query — keep it modest per member.
+  const ok = await rateLimit({ bucket: `suggest:${userData.user.id}`, limit: 20, windowSeconds: 60 });
+  if (!ok) return NextResponse.json({ suggestions: [], basis: 'rate_limited' });
 
   const sb = getServerSupabase();
   const { data: me } = await sb
