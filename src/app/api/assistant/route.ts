@@ -5,6 +5,7 @@ import { searchMembers, directoryStats, recruitingNeeds, getMember, knowledgeSea
 import { resolveAssistantConfig, type AssistantConfig } from '@/lib/assistant/config';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60; // bound the serverless function (tool loop + model fallbacks)
 
 const MAX_TOOL_ROUNDS = 4;
 /** Statuses worth retrying (transient): rate-limit, gateway, and server errors. */

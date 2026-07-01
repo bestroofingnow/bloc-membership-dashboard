@@ -5,6 +5,7 @@ import { knowledgeSearch } from '@/lib/assistant/directory';
 import { rateLimit } from '@/lib/guest/rate-limit';
 
 export const runtime = 'nodejs';
+export const maxDuration = 30; // bounds the embed + vector-search call
 
 /**
  * "Members you should meet" — semantic referral-partner suggestions. Embeds the

@@ -5,6 +5,7 @@ import { getServerSupabase } from '@/lib/guest/supabase-server';
 import { rateLimit } from '@/lib/guest/rate-limit';
 
 export const runtime = 'nodejs';
+export const maxDuration = 30; // bounds the Storage upload
 
 /** True if the bytes start with a JPEG (FF D8 FF) or PNG (89 50 4E 47) signature. */
 function looksLikeImage(b: Buffer): boolean {
