@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
 import { QrCode, Plus, X, Copy, RotateCcw, Check, Printer } from 'lucide-react';
 import { useQrTokens, type MintQrInput } from '@/hooks/useQrTokens';
@@ -50,6 +50,16 @@ export function QrTokensTab() {
 
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  // Close the dialog on Escape (unless a mint is in flight).
+  useEffect(() => {
+    if (!showForm) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !busy) setShowForm(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showForm, busy]);
   const [formError, setFormError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showOnlyActive, setShowOnlyActive] = useState(true);
@@ -255,8 +265,16 @@ export function QrTokensTab() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          <div className="bg-white rounded-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => !busy && setShowForm(false)}
+        >
+          <div
+            className="bg-white rounded-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold">Mint new QR code</h3>
 
             <label className="block">
