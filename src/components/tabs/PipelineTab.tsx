@@ -522,12 +522,14 @@ export function PipelineTab() {
       >
         <div className="space-y-4">
           <Input
+            autoFocus
             label="Full Name"
             value={newGuest.name}
             onChange={(e) =>
               setNewGuest((prev) => ({ ...prev, name: e.target.value }))
             }
             placeholder="e.g., John Smith"
+            maxLength={120}
           />
           <Input
             label="Company"
