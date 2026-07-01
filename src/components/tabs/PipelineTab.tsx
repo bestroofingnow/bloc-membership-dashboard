@@ -348,6 +348,7 @@ export function PipelineTab() {
 
   const handleDeleteGuest = async () => {
     if (!canEdit || !selectedGuest) return;
+    if (!window.confirm(`Delete ${selectedGuest.name || 'this guest'} from the pipeline? This cannot be undone.`)) return;
     setIsSubmitting(true);
 
     const result = await deleteGuest(selectedGuest.id);

@@ -113,6 +113,7 @@ export function TargetsTab() {
   };
 
   const handleDeleteTarget = async (targetId: string) => {
+    if (!window.confirm('Remove this target?')) return;
     await deleteTarget(targetId);
   };
 
@@ -126,6 +127,7 @@ export function TargetsTab() {
   };
 
   const handleDeleteCategory = async (categoryName: string) => {
+    if (!window.confirm(`Delete the "${categoryName}" category and its targets? This cannot be undone.`)) return;
     await deleteCategory(categoryName);
   };
 
