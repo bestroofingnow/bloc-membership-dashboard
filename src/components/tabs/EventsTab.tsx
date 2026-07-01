@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Calendar, Plus, Pencil, Trash2, EyeOff, Eye } from 'lucide-react';
 import { useEvents, type EventInput } from '@/hooks/useEvents';
 import { useAuth } from '@/contexts/AuthContext';
@@ -47,6 +47,16 @@ export function EventsTab() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [busy, setBusy] = useState(false);
+
+  // Close the dialog on Escape (unless a save is in flight).
+  useEffect(() => {
+    if (!showForm) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !busy) setShowForm(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showForm, busy]);
   const [formError, setFormError] = useState<string | null>(null);
 
   const now = Date.now();
@@ -172,8 +182,16 @@ export function EventsTab() {
       <Section title="Past" events={past} canEdit={canEdit} onEdit={openEdit} onDelete={remove} onToggle={toggleVisibility} loading={loading} dim />
 
       {showForm && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          <div className="bg-white rounded-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => !busy && setShowForm(false)}
+        >
+          <div
+            className="bg-white rounded-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold">{editing ? 'Edit event' : 'New event'}</h3>
 
             <FormField label="Title">

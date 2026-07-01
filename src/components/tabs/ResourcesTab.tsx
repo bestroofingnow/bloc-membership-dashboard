@@ -47,6 +47,16 @@ export function ResourcesTab() {
     load();
   }, [load]);
 
+  // Close the dialog on Escape (unless a save is in flight).
+  useEffect(() => {
+    if (!showForm) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !busy) setShowForm(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showForm, busy]);
+
   function openCreate() {
     setEditing(null);
     setForm({ ...emptyForm });
@@ -176,8 +186,13 @@ export function ResourcesTab() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
-          <div className="w-full max-w-lg space-y-4 rounded-xl bg-white p-6">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => !busy && setShowForm(false)}
+        >
+          <div className="w-full max-w-lg space-y-4 rounded-xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold">{editing ? 'Edit resource' : 'New resource'}</h3>
             <label className="block text-sm">
               Title
@@ -197,7 +212,7 @@ export function ResourcesTab() {
             </label>
             <label className="block text-sm">
               Description
-              <textarea className="mt-1 w-full rounded border p-2" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              <textarea className="mt-1 w-full rounded border p-2" rows={3} maxLength={2000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={form.public_visible} onChange={(e) => setForm({ ...form, public_visible: e.target.checked })} />
