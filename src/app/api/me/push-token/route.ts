@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { getServerSupabase } from '@/lib/guest/supabase-server';
+import { rateLimit } from '@/lib/guest/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -27,6 +28,9 @@ export async function POST(req: Request) {
   const authClient = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: userData, error: userErr } = await authClient.auth.getUser(token);
   if (userErr || !userData?.user?.email) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const ok = await rateLimit({ bucket: `pushtoken:${userData.user.id}`, limit: 30, windowSeconds: 60 });
+  if (!ok) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
 
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'bad_request' }, { status: 400 });

@@ -13,6 +13,9 @@ const securityHeaders = [
     key: 'Permissions-Policy',
     value: 'camera=(self), microphone=(), geolocation=(), interest-cohort=()',
   },
+  // Block legacy cross-domain policy files and IE "open" downloads.
+  { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
+  { key: 'X-Download-Options', value: 'noopen' },
 ];
 
 const nextConfig = {
@@ -24,6 +27,11 @@ const nextConfig = {
         // Apply to all routes
         source: '/(.*)',
         headers: securityHeaders,
+      },
+      {
+        // Never let a proxy/browser cache authenticated API responses (member data).
+        source: '/api/(.*)',
+        headers: [{ key: 'Cache-Control', value: 'no-store' }],
       },
     ];
   },
