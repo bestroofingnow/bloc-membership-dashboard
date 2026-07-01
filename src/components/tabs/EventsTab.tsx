@@ -218,7 +218,7 @@ export function EventsTab() {
               </FormField>
             </div>
             <FormField label="Location name">
-              <input className="w-full rounded border p-2" value={form.location_name} onChange={(e) => setForm({ ...form, location_name: e.target.value })} />
+              <input className="w-full rounded border p-2" value={form.location_name} onChange={(e) => setForm({ ...form, location_name: e.target.value })} maxLength={200} />
             </FormField>
             <FormField label="Address">
               <input className="w-full rounded border p-2" value={form.location_address} onChange={(e) => setForm({ ...form, location_address: e.target.value })} />

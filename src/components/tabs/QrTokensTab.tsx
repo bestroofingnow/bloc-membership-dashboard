@@ -318,7 +318,7 @@ export function QrTokensTab() {
 
             <label className="block">
               <span className="text-sm font-medium block mb-1">Label (admin-facing)</span>
-              <input className="w-full rounded border p-2" value={form.label ?? ''} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. Uptown April After Hours - table tent #3" />
+              <input className="w-full rounded border p-2" value={form.label ?? ''} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. Uptown April After Hours - table tent #3" maxLength={200} />
             </label>
 
             {formError && <p className="text-sm text-red-600" role="alert">{formError}</p>}
