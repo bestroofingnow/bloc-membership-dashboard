@@ -6,6 +6,8 @@ import { buildIcs } from '@/lib/guest/ics';
 import { requireDirector } from '@/lib/admin-auth';
 import { rateLimit } from '@/lib/guest/rate-limit';
 
+export const maxDuration = 30; // bounds the email-send call
+
 const schema = z.object({
   guest_id: z.string().uuid(),
   event_id: z.string().uuid(),
