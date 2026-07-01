@@ -59,3 +59,32 @@ export async function POST(req: Request) {
   }
   return NextResponse.json({ ok: true });
 }
+
+/**
+ * Remove the caller's push tokens (on sign-out) so a logged-out device stops
+ * receiving notification previews. Deletes all of the member's tokens.
+ */
+export async function DELETE(req: Request) {
+  const auth = req.headers.get('authorization') ?? '';
+  const token = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : '';
+  if (!token) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) return NextResponse.json({ error: 'server_misconfigured' }, { status: 500 });
+
+  const authClient = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: userData, error: userErr } = await authClient.auth.getUser(token);
+  if (userErr || !userData?.user?.email) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const sb = getServerSupabase();
+  const { data: memRow } = await sb
+    .from('members')
+    .select('id')
+    .ilike('email', userData.user.email)
+    .limit(1)
+    .maybeSingle();
+  if (!memRow) return NextResponse.json({ ok: true }); // nothing to remove
+  await sb.from('push_tokens').delete().eq('member_id', memRow.id);
+  return NextResponse.json({ ok: true });
+}

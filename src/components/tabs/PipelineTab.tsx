@@ -348,6 +348,7 @@ export function PipelineTab() {
 
   const handleDeleteGuest = async () => {
     if (!canEdit || !selectedGuest) return;
+    if (!window.confirm(`Delete ${selectedGuest.name || 'this guest'} from the pipeline? This cannot be undone.`)) return;
     setIsSubmitting(true);
 
     const result = await deleteGuest(selectedGuest.id);
@@ -522,12 +523,14 @@ export function PipelineTab() {
       >
         <div className="space-y-4">
           <Input
+            autoFocus
             label="Full Name"
             value={newGuest.name}
             onChange={(e) =>
               setNewGuest((prev) => ({ ...prev, name: e.target.value }))
             }
             placeholder="e.g., John Smith"
+            maxLength={120}
           />
           <Input
             label="Company"

@@ -4,6 +4,9 @@ import { getServerSupabase } from '@/lib/guest/supabase-server';
 import { getEmailClient } from '@/lib/guest/email';
 import { buildIcs } from '@/lib/guest/ics';
 import { requireDirector } from '@/lib/admin-auth';
+import { rateLimit } from '@/lib/guest/rate-limit';
+
+export const maxDuration = 30; // bounds the email-send call
 
 const schema = z.object({
   guest_id: z.string().uuid(),
@@ -19,6 +22,10 @@ const schema = z.object({
 export async function POST(req: Request) {
   const profile = await requireDirector(req);
   if (!profile) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  // Sends an email — throttle to prevent abuse.
+  const ok = await rateLimit({ bucket: `guest-invite:${profile.id}`, limit: 30, windowSeconds: 60 });
+  if (!ok) return NextResponse.json({ error: 'Too many invites. Please wait a minute.' }, { status: 429 });
 
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);

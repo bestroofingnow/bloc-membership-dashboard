@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerSupabase } from '@/lib/guest/supabase-server';
 import { requireDirector } from '@/lib/admin-auth';
+import { rateLimit } from '@/lib/guest/rate-limit';
 import { upsertWaitingLead, promoteToMember, type MembershipPerson } from '@/lib/membership/apply';
 
 export const runtime = 'nodejs';
@@ -33,6 +34,9 @@ interface Props {
 export async function POST(req: Request, { params }: Props) {
   const profile = await requireDirector(req);
   if (!profile) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const ok = await rateLimit({ bucket: `membership-inbox:${profile.id}`, limit: 40, windowSeconds: 60 });
+  if (!ok) return NextResponse.json({ error: 'Too many requests. Please wait a minute.' }, { status: 429 });
   const { id } = await params;
 
   const body = await req.json().catch(() => null);
