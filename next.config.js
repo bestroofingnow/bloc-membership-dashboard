@@ -13,6 +13,9 @@ const securityHeaders = [
     key: 'Permissions-Policy',
     value: 'camera=(self), microphone=(), geolocation=(), interest-cohort=()',
   },
+  // Block legacy cross-domain policy files and IE "open" downloads.
+  { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
+  { key: 'X-Download-Options', value: 'noopen' },
 ];
 
 const nextConfig = {
