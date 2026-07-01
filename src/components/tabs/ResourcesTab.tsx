@@ -181,11 +181,11 @@ export function ResourcesTab() {
             <h3 className="text-lg font-semibold">{editing ? 'Edit resource' : 'New resource'}</h3>
             <label className="block text-sm">
               Title
-              <input className="mt-1 w-full rounded border p-2" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+              <input autoFocus className="mt-1 w-full rounded border p-2 focus:outline-none focus:ring-1 focus:ring-slate-500" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={200} required />
             </label>
             <label className="block text-sm">
               Link (https://…)
-              <input className="mt-1 w-full rounded border p-2" type="url" placeholder="https://…" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
+              <input className="mt-1 w-full rounded border p-2" type="url" placeholder="https://…" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} maxLength={2048} />
             </label>
             <label className="block text-sm">
               Category
