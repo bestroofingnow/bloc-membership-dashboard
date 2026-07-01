@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { getServerSupabase } from '@/lib/guest/supabase-server';
+import { rateLimit } from '@/lib/guest/rate-limit';
 
 const schema = z.object({
   chapter: z.enum(['North', 'South', 'Uptown', 'FLOC', 'Alumni']),
@@ -30,6 +31,9 @@ export async function POST(req: Request) {
   });
   const { data: userData, error: userErr } = await authClient.auth.getUser(token);
   if (userErr || !userData?.user?.email) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const ok = await rateLimit({ bucket: `roster-vis:${userData.user.id}`, limit: 30, windowSeconds: 60 });
+  if (!ok) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
 
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
