@@ -25,6 +25,11 @@ const nextConfig = {
         source: '/(.*)',
         headers: securityHeaders,
       },
+      {
+        // Never let a proxy/browser cache authenticated API responses (member data).
+        source: '/api/(.*)',
+        headers: [{ key: 'Cache-Control', value: 'no-store' }],
+      },
     ];
   },
 };
