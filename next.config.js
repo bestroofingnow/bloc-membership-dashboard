@@ -16,6 +16,13 @@ const securityHeaders = [
   // Block legacy cross-domain policy files and IE "open" downloads.
   { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
   { key: 'X-Download-Options', value: 'noopen' },
+  // Baseline CSP: modern anti-framing, no plugins, no <base> hijacking, forms
+  // only submit to us. Deliberately does NOT restrict script/style sources —
+  // a full source policy needs nonce plumbing + live testing before shipping.
+  {
+    key: 'Content-Security-Policy',
+    value: "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
+  },
 ];
 
 const nextConfig = {
