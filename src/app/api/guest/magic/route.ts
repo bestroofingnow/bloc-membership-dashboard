@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
 import { hashMagic } from '@/lib/guest/magic';
 import { getServerSupabase } from '@/lib/guest/supabase-server';
+import { ipFromHeaders, rateLimit } from '@/lib/guest/rate-limit';
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const token = url.searchParams.get('t');
   if (!token) return NextResponse.redirect(new URL('/guest/error/bad-link', req.url));
+
+  // Token-validation endpoint — throttle per IP so magic links can't be brute-forced.
+  const ip = ipFromHeaders(req.headers);
+  const allowed = await rateLimit({ bucket: `guest-magic:${ip}`, limit: 20, windowSeconds: 60 });
+  if (!allowed) return NextResponse.redirect(new URL('/guest/error/bad-link', req.url));
 
   const sb = getServerSupabase();
   const hash = hashMagic(token);

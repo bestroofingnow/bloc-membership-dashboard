@@ -98,11 +98,11 @@ export function GuestDetailsForm(props: Props) {
   return (
     <form onSubmit={onSubmit} className="mt-6 space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="First name" value={firstName} onChange={setFirstName} />
-        <Field label="Last name" value={lastName} onChange={setLastName} />
+        <Field label="First name" value={firstName} onChange={setFirstName} autoComplete="given-name" autoFocus />
+        <Field label="Last name" value={lastName} onChange={setLastName} autoComplete="family-name" />
       </div>
-      <Field label="Email" type="email" value={email} onChange={setEmail} />
-      <Field label="Business name" value={businessName} onChange={setBusinessName} />
+      <Field label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" />
+      <Field label="Business name" value={businessName} onChange={setBusinessName} autoComplete="organization" />
 
       <div>
         <label className="block text-sm font-medium">Industry</label>
@@ -168,7 +168,14 @@ export function GuestDetailsForm(props: Props) {
   );
 }
 
-function Field(props: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
+function Field(props: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  autoComplete?: string;
+  autoFocus?: boolean;
+}) {
   const isRequired = props.label !== 'Describe your business';
   const isInvalid = isRequired && props.value.trim() === '';
   return (
@@ -185,6 +192,9 @@ function Field(props: { label: string; value: string; onChange: (v: string) => v
         required={isRequired}
         aria-required={isRequired}
         aria-invalid={isInvalid}
+        autoComplete={props.autoComplete}
+        autoFocus={props.autoFocus}
+        maxLength={200}
       />
     </div>
   );

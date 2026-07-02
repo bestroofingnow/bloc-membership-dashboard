@@ -2,30 +2,14 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { linkLead } from '@/lib/leads/linkLead';
 import { parseJoinInput } from '@/lib/join/validate';
-
-// Simple in-memory rate limiting
-const submissions = new Map<string, number>();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_SUBMISSIONS = 3; // max 3 per minute per IP
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const lastSubmission = submissions.get(ip);
-  if (!lastSubmission) {
-    submissions.set(ip, now);
-    return false;
-  }
-  if (now - lastSubmission < RATE_LIMIT_WINDOW) {
-    return true;
-  }
-  submissions.set(ip, now);
-  return false;
-}
+import { ipFromHeaders, rateLimit } from '@/lib/guest/rate-limit';
 
 export async function POST(request: Request) {
-  // Rate limit check
-  const ip = request.headers.get('x-forwarded-for') || 'unknown';
-  if (isRateLimited(ip)) {
+  // Durable per-IP rate limit — an in-memory map doesn't survive serverless
+  // instances, so use the shared DB-backed limiter like every other route.
+  const ip = ipFromHeaders(request.headers);
+  const allowed = await rateLimit({ bucket: `join:${ip}`, limit: 3, windowSeconds: 60 });
+  if (!allowed) {
     return NextResponse.json(
       { error: 'Too many submissions. Please try again later.' },
       { status: 429 }
