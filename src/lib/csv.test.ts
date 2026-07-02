@@ -25,6 +25,25 @@ describe('csvField()', () => {
   test('empty string passes through', () => {
     expect(csvField('')).toBe('');
   });
+
+  // Spreadsheet formula-injection defense: leading = + - @ or tab gets a
+  // single-quote prefix so Excel/Sheets render text, not a formula.
+  test('leading = is neutralized', () => {
+    expect(csvField('=HYPERLINK("http://evil","x")')).toBe(
+      '"\'=HYPERLINK(""http://evil"",""x"")"',
+    );
+  });
+
+  test('leading + - @ and tab are neutralized', () => {
+    expect(csvField('+1')).toBe("'+1");
+    expect(csvField('-2')).toBe("'-2");
+    expect(csvField('@cmd')).toBe("'@cmd");
+    expect(csvField('\tx')).toBe("'\tx");
+  });
+
+  test('= in the middle is left alone', () => {
+    expect(csvField('a=b')).toBe('a=b');
+  });
 });
 
 describe('csvRow()', () => {
