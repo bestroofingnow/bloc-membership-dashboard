@@ -26,8 +26,10 @@ export async function GET() {
     // returns just the count without payload — fast and small.
     const { error } = await sb.from('events').select('id', { count: 'exact', head: true });
     if (error) {
+      // Log the detail server-side; never echo internal DB errors on a public route.
+      console.error('health probe db error', error);
       return NextResponse.json(
-        { ok: false, error: 'db_unreachable', detail: error.message },
+        { ok: false, error: 'db_unreachable' },
         { status: 503 },
       );
     }
@@ -37,8 +39,9 @@ export async function GET() {
       duration_ms: Date.now() - started,
     });
   } catch (e) {
+    console.error('health probe unexpected error', e);
     return NextResponse.json(
-      { ok: false, error: 'unexpected', detail: e instanceof Error ? e.message : String(e) },
+      { ok: false, error: 'unexpected' },
       { status: 503 },
     );
   }

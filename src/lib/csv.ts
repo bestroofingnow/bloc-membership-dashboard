@@ -1,14 +1,22 @@
 /**
- * RFC 4180-style CSV field escape.
+ * RFC 4180-style CSV field escape, plus spreadsheet formula-injection defense.
  *
  * Wraps in double quotes when the value contains a comma, double quote, or
  * newline. Embedded double quotes are escaped by doubling.
+ *
+ * Values starting with = + - @ or a tab are prefixed with a single quote so
+ * Excel/Sheets treat them as text instead of executing them as formulas —
+ * these exports contain guest-typed names that must never run on staff machines.
  */
 export function csvField(value: string): string {
-  if (/[",\n\r]/.test(value)) {
-    return '"' + value.replace(/"/g, '""') + '"';
+  let v = value;
+  if (/^[=+\-@\t]/.test(v)) {
+    v = "'" + v;
   }
-  return value;
+  if (/[",\n\r]/.test(v)) {
+    return '"' + v.replace(/"/g, '""') + '"';
+  }
+  return v;
 }
 
 /**

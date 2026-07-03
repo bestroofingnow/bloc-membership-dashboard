@@ -16,6 +16,9 @@ export const metadata: Metadata = {
     description: 'Building friendships, growing business, and strengthening our community.',
     type: 'website',
   },
+  // Members-only portal — keep it out of search engines (the public marketing
+  // site lives at businessleadersofcharlotte.com, not here).
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
