@@ -117,6 +117,8 @@ export default function JoinPage() {
                 onChange={(e) => updateField('name', e.target.value)}
                 className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
                 placeholder="John Smith"
+                autoComplete="name"
+                maxLength={120}
               />
             </div>
 
@@ -131,6 +133,8 @@ export default function JoinPage() {
                 onChange={(e) => updateField('company', e.target.value)}
                 className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
                 placeholder="Smith Consulting LLC"
+                autoComplete="organization"
+                maxLength={120}
               />
             </div>
 
@@ -144,6 +148,8 @@ export default function JoinPage() {
                 onChange={(e) => updateField('email', e.target.value)}
                 className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
                 placeholder="john@company.com"
+                autoComplete="email"
+                maxLength={200}
               />
             </div>
 
@@ -157,6 +163,8 @@ export default function JoinPage() {
                 onChange={(e) => updateField('phone', e.target.value)}
                 className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
                 placeholder="704-555-0000"
+                autoComplete="tel"
+                maxLength={30}
               />
               <p className="text-xs text-slate-400 mt-1">Add at least an email or phone so we can reach you.</p>
             </div>
