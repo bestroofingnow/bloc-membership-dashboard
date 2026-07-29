@@ -524,7 +524,7 @@ export function PipelineTab() {
         <div className="space-y-4">
           <Input
             autoFocus
-            label="Full Name"
+            label="Full Name *"
             value={newGuest.name}
             onChange={(e) =>
               setNewGuest((prev) => ({ ...prev, name: e.target.value }))
@@ -533,7 +533,7 @@ export function PipelineTab() {
             maxLength={120}
           />
           <Input
-            label="Company"
+            label="Company *"
             value={newGuest.company}
             onChange={(e) =>
               setNewGuest((prev) => ({ ...prev, company: e.target.value }))
@@ -549,23 +549,28 @@ export function PipelineTab() {
             placeholder="e.g., Business Consulting"
           />
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Invited By
-            </label>
-            <select
+            <Input
+              label="Invited By *"
               value={newGuest.invitedBy}
               onChange={(e) =>
                 setNewGuest((prev) => ({ ...prev, invitedBy: e.target.value }))
               }
-              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-bloc-blue focus:border-bloc-blue outline-none"
-            >
-              <option value="">Select a member...</option>
+              placeholder="e.g., a board member's name, or how they found BLOC"
+              list="invited-by-members"
+              maxLength={120}
+            />
+            <datalist id="invited-by-members">
               {boardMembers.map((m) => (
                 <option key={m.name} value={m.name}>
                   {m.name} ({m.role})
                 </option>
               ))}
-            </select>
+            </datalist>
+            <p className="mt-1 text-xs text-slate-500">
+              Required. Pick a board member from the list, or type a member&apos;s
+              name or how they registered (e.g. &quot;July After Hours
+              registration&quot;).
+            </p>
           </div>
           <Input
             label="Email (optional)"
