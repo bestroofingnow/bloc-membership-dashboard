@@ -55,16 +55,25 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Validate webhook secret
+  // Validate webhook secret — FAIL CLOSED. If the secret env isn't configured,
+  // reject everything rather than accept unauthenticated posts into the signup
+  // inbox. Accept the secret via header (generic webhooks) or ?key= query param
+  // (SendGrid Inbound Parse can't send custom headers).
   const webhookSecret = Deno.env.get('INBOUND_EMAIL_WEBHOOK_SECRET');
-  if (webhookSecret) {
-    const providedSecret = req.headers.get('x-webhook-secret');
-    if (providedSecret !== webhookSecret) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+  if (!webhookSecret) {
+    console.error('INBOUND_EMAIL_WEBHOOK_SECRET is not set — refusing all requests');
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  const providedSecret =
+    req.headers.get('x-webhook-secret') ?? new URL(req.url).searchParams.get('key');
+  if (providedSecret !== webhookSecret) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   try {

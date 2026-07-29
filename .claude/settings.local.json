@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(python3 -)",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(awk -F= '/SUPABASE_SERVICE_ROLE_KEY/{print length\\($2\\)\" chars\"}' .env.local)",
+      "Bash(npx vitest *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(python3 scripts/import_after_hours_and_pending.py --dry-run)",
+      "Bash(gh auth *)",
+      "Bash(gh api *)",
+      "Bash(echo \"active now: $\\(gh api user --jq .login\\)\")",
+      "Bash(gh pr create --base master --head after-hours-member-tier --title 'After Hours member tier, pending applicants & chapter lunch links' --body ' *)",
+      "Bash(gh pr *)",
+      "mcp__claude_ai_Vercel__list_teams",
+      "mcp__claude_ai_Vercel__list_projects",
+      "mcp__claude_ai_Vercel__list_deployments",
+      "mcp__claude_ai_Vercel__get_project"
+    ]
+  }
+}

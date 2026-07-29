@@ -9,11 +9,13 @@ interface ChatMessage {
   content: string;
 }
 
+// Showcase semantic search (the KB matches meaning, not just keywords) plus
+// the classic roster questions. Keep in sync with the mobile Assistant examples.
 const EXAMPLES = [
+  'Who can help me buy a house?',
+  'I need someone for my back pain',
   'Do we have a banker in North chapter?',
-  'Which chapters have an attorney?',
   'How many members are in each chapter?',
-  'Who does marketing in the network?',
 ];
 
 export function AssistantTab() {
