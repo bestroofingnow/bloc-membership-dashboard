@@ -14,6 +14,7 @@ export { IntakeGuestsTab } from './IntakeGuestsTab';
 export { EventsTab } from './EventsTab';
 export { QrTokensTab } from './QrTokensTab';
 export { RosterTab } from './RosterTab';
+export { NetworkingTab } from './NetworkingTab';
 export { MyProfileTab } from './MyProfileTab';
 export { MemberTaxonomyTab } from './MemberTaxonomyTab';
 export { SeatMapTab } from './SeatMapTab';
