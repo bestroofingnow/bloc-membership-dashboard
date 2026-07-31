@@ -58,6 +58,9 @@ describe('validateMeeting()', () => {
   test('caps location length', () => {
     expect(validateMeeting({ ...ok, location: 'x'.repeat(301) }).ok).toBe(false);
   });
+  test('rejects an unparseable proposedAt', () => {
+    expect(validateMeeting({ ...ok, proposedAt: 'whenever' }).ok).toBe(false);
+  });
 });
 
 describe('myParticipantStatus()', () => {
@@ -90,6 +93,7 @@ describe('categorizeMeetings()', () => {
     meeting({ id: 'm5', status: 'completed', met_on: '2026-06-10', proposed_at: null, participants: [participant('me', 'accepted'), participant('e', 'accepted')] }), // past (logged)
     meeting({ id: 'm6', status: 'cancelled', participants: [participant('me', 'pending')] }), // dropped
     meeting({ id: 'm7', participants: [participant('other1', 'pending'), participant('other2', 'accepted')] }), // I'm not in this one
+    meeting({ id: 'm8', proposed_at: '2026-07-05T14:00:00Z', participants: [participant('me', 'declined'), participant('f', 'accepted')] }), // I declined — must not appear anywhere
   ];
   const c = categorizeMeetings(data, 'me', now);
 
@@ -109,5 +113,9 @@ describe('categorizeMeetings()', () => {
     const ids = [...c.needsMyResponse, ...c.awaitingOthers, ...c.upcoming, ...c.past].map((m) => m.id);
     expect(ids).not.toContain('m6');
     expect(ids).not.toContain('m7');
+  });
+  test('drops meetings the caller has declined', () => {
+    const ids = [...c.needsMyResponse, ...c.awaitingOthers, ...c.upcoming, ...c.past].map((m) => m.id);
+    expect(ids).not.toContain('m8');
   });
 });

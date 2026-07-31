@@ -81,8 +81,8 @@ export function canCancel(meeting: Pick<Meeting, 'organizer_member_id'>, myId: s
   return meeting.organizer_member_id === myId;
 }
 
-/** Everyone has accepted (declines don't block "confirmed" — they're just not attending). */
-function allOthersAccepted(meeting: Meeting, myId: string): boolean {
+/** Everyone else has responded (declines don't block "confirmed" — they're just not attending). */
+function allOthersResponded(meeting: Meeting, myId: string): boolean {
   return meeting.participants
     .filter((p) => p.member_id !== myId)
     .every((p) => p.response_status !== 'pending');
@@ -110,7 +110,7 @@ export function categorizeMeetings<T extends Meeting>(
   for (const m of meetings) {
     if (m.status === 'cancelled') continue;
     const mine = myParticipantStatus(m, myId);
-    if (mine === null) continue;
+    if (mine === null || mine === 'declined') continue;
     if (m.status === 'completed') {
       out.past.push(m);
       continue;
@@ -118,7 +118,7 @@ export function categorizeMeetings<T extends Meeting>(
     // status === 'proposed'
     if (mine === 'pending') {
       out.needsMyResponse.push(m);
-    } else if (!allOthersAccepted(m, myId)) {
+    } else if (!allOthersResponded(m, myId)) {
       out.awaitingOthers.push(m);
     } else if (m.proposed_at && Date.parse(m.proposed_at) >= t) {
       out.upcoming.push(m);
