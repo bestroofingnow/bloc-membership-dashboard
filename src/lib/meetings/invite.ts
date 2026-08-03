@@ -67,6 +67,9 @@ export function validateMeeting(input: MeetingInput): ValidationResult {
   if (proposedAt && Number.isNaN(Date.parse(proposedAt))) {
     return { ok: false, error: 'Pick a date and time.' };
   }
+  if (metOn && Number.isNaN(Date.parse(metOn))) {
+    return { ok: false, error: 'Pick a date.' };
+  }
   if ((input.location ?? '').length > 300) return { ok: false, error: 'Location is too long.' };
   return { ok: true };
 }

@@ -61,6 +61,9 @@ describe('validateMeeting()', () => {
   test('rejects an unparseable proposedAt', () => {
     expect(validateMeeting({ ...ok, proposedAt: 'whenever' }).ok).toBe(false);
   });
+  test('rejects an unparseable metOn', () => {
+    expect(validateMeeting({ ...ok, proposedAt: null, metOn: 'last tuesday' }).ok).toBe(false);
+  });
 });
 
 describe('myParticipantStatus()', () => {
