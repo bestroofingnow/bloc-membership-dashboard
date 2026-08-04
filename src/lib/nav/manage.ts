@@ -16,6 +16,7 @@ export const MANAGE_TOOLS: ManageToolMeta[] = [
   { key: 'resources', label: 'Resources', adminOnly: false },
   { key: 'qr', label: 'QR Codes', adminOnly: false },
   { key: 'roster', label: 'Roster', adminOnly: false },
+  { key: 'networking', label: 'Networking', adminOnly: false },
   { key: 'seats', label: 'Category Seats', adminOnly: false },
   { key: 'taxonomy', label: 'Member Taxonomy', adminOnly: true },
   { key: 'admin', label: 'Admin', adminOnly: true },

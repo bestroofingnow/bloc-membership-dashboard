@@ -1,100 +1,124 @@
 import { describe, test, expect } from 'vitest';
 import {
-  validateInvite,
-  awaitingMemberId,
-  canRespond,
-  counterpartId,
-  categorizeInvites,
-  type MeetingInvite,
+  validateMeeting,
+  myParticipantStatus,
+  canCancel,
+  categorizeMeetings,
+  type Meeting,
+  type Participant,
 } from './invite';
 
-describe('validateInvite()', () => {
-  const ok = { fromId: 'a', toId: 'b', kind: 'coffee', proposedAt: '2026-07-01T14:00:00Z' };
-  test('a complete invite is valid', () => {
-    expect(validateInvite(ok).ok).toBe(true);
-  });
-  test('requires from, to, and they must differ', () => {
-    expect(validateInvite({ ...ok, fromId: null }).ok).toBe(false);
-    expect(validateInvite({ ...ok, toId: null }).ok).toBe(false);
-    expect(validateInvite({ ...ok, toId: 'a' }).ok).toBe(false);
-  });
-  test('rejects a bad kind or unparseable date', () => {
-    expect(validateInvite({ ...ok, kind: 'dinner' }).ok).toBe(false);
-    expect(validateInvite({ ...ok, proposedAt: 'whenever' }).ok).toBe(false);
-    expect(validateInvite({ ...ok, proposedAt: null }).ok).toBe(false);
-  });
-  test('caps location length', () => {
-    expect(validateInvite({ ...ok, location: 'x'.repeat(301) }).ok).toBe(false);
-  });
-});
+function participant(memberId: string, status: Participant['response_status'] = 'pending'): Participant {
+  return { member_id: memberId, response_status: status };
+}
 
-function inv(p: Partial<MeetingInvite>): MeetingInvite {
+function meeting(p: Partial<Meeting> & { participants: Participant[] }): Meeting {
   return {
-    id: 'i',
-    from_member_id: 'a',
-    to_member_id: 'b',
-    proposed_by_member_id: 'a',
+    id: 'm',
+    organizer_member_id: 'a',
     kind: 'coffee',
+    status: 'proposed',
     proposed_at: '2026-07-01T14:00:00Z',
+    met_on: null,
     location: null,
     note: null,
-    status: 'pending',
     ...p,
   };
 }
 
-describe('awaitingMemberId() / canRespond()', () => {
-  test('pending invite awaits the party who did NOT propose', () => {
-    expect(awaitingMemberId(inv({ proposed_by_member_id: 'a' }))).toBe('b');
-    expect(awaitingMemberId(inv({ proposed_by_member_id: 'b' }))).toBe('a');
+describe('validateMeeting()', () => {
+  const ok = {
+    organizerId: 'a',
+    participantIds: ['b', 'c'],
+    kind: 'coffee',
+    proposedAt: '2026-07-01T14:00:00Z',
+  };
+  test('a complete proposal is valid', () => {
+    expect(validateMeeting(ok).ok).toBe(true);
   });
-  test('a reschedule by the invitee flips whose turn it is', () => {
-    // b proposed a new time → now a must respond
-    expect(awaitingMemberId(inv({ proposed_by_member_id: 'b' }))).toBe('a');
+  test('requires an organizer and at least one other participant', () => {
+    expect(validateMeeting({ ...ok, organizerId: '' }).ok).toBe(false);
+    expect(validateMeeting({ ...ok, participantIds: [] }).ok).toBe(false);
   });
-  test('non-pending invites await no one', () => {
-    expect(awaitingMemberId(inv({ status: 'accepted' }))).toBeNull();
-    expect(awaitingMemberId(inv({ status: 'declined' }))).toBeNull();
+  test('the organizer cannot also be listed as a participant', () => {
+    expect(validateMeeting({ ...ok, participantIds: ['a', 'b'] }).ok).toBe(false);
   });
-  test('only the awaiting party can respond', () => {
-    const i = inv({ proposed_by_member_id: 'a' });
-    expect(canRespond(i, 'b')).toBe(true);
-    expect(canRespond(i, 'a')).toBe(false);
+  test('rejects duplicate participants', () => {
+    expect(validateMeeting({ ...ok, participantIds: ['b', 'b'] }).ok).toBe(false);
+  });
+  test('rejects a bad kind', () => {
+    expect(validateMeeting({ ...ok, kind: 'dinner' }).ok).toBe(false);
+  });
+  test('when logging a past meeting (metOn set), proposedAt is not required', () => {
+    expect(validateMeeting({ ...ok, proposedAt: null, metOn: '2026-06-01' }).ok).toBe(true);
+  });
+  test('requires either proposedAt or metOn', () => {
+    expect(validateMeeting({ ...ok, proposedAt: null, metOn: null }).ok).toBe(false);
+  });
+  test('caps location length', () => {
+    expect(validateMeeting({ ...ok, location: 'x'.repeat(301) }).ok).toBe(false);
+  });
+  test('rejects an unparseable proposedAt', () => {
+    expect(validateMeeting({ ...ok, proposedAt: 'whenever' }).ok).toBe(false);
+  });
+  test('rejects an unparseable metOn', () => {
+    expect(validateMeeting({ ...ok, proposedAt: null, metOn: 'last tuesday' }).ok).toBe(false);
   });
 });
 
-describe('counterpartId()', () => {
-  test('returns the other participant', () => {
-    const i = inv({ from_member_id: 'a', to_member_id: 'b' });
-    expect(counterpartId(i, 'a')).toBe('b');
-    expect(counterpartId(i, 'b')).toBe('a');
+describe('myParticipantStatus()', () => {
+  test("returns the caller's own response status", () => {
+    const m = meeting({ participants: [participant('a', 'accepted'), participant('b', 'pending')] });
+    expect(myParticipantStatus(m, 'a')).toBe('accepted');
+    expect(myParticipantStatus(m, 'b')).toBe('pending');
+  });
+  test('null when the caller is not a participant', () => {
+    const m = meeting({ participants: [participant('a', 'accepted')] });
+    expect(myParticipantStatus(m, 'z')).toBeNull();
   });
 });
 
-describe('categorizeInvites()', () => {
+describe('canCancel()', () => {
+  test('only the organizer can cancel', () => {
+    const m = meeting({ organizer_member_id: 'a', participants: [participant('a', 'accepted'), participant('b', 'accepted')] });
+    expect(canCancel(m, 'a')).toBe(true);
+    expect(canCancel(m, 'b')).toBe(false);
+  });
+});
+
+describe('categorizeMeetings()', () => {
   const now = new Date('2026-07-01T00:00:00Z');
-  const data: MeetingInvite[] = [
-    inv({ id: 'm1', status: 'pending', proposed_by_member_id: 'b' }), // awaits me (a)
-    inv({ id: 'm2', status: 'pending', proposed_by_member_id: 'a' }), // awaits them (b)
-    inv({ id: 'm3', status: 'accepted', proposed_at: '2026-07-05T14:00:00Z' }), // upcoming
-    inv({ id: 'm4', status: 'accepted', proposed_at: '2026-06-20T14:00:00Z' }), // past
-    inv({ id: 'm5', status: 'completed', proposed_at: '2026-06-10T14:00:00Z' }), // past
-    inv({ id: 'm6', status: 'declined' }), // dropped
-    inv({ id: 'm7', status: 'cancelled' }), // dropped
+  const data: Meeting[] = [
+    meeting({ id: 'm1', participants: [participant('a', 'accepted'), participant('me', 'pending')] }), // needs my response
+    meeting({ id: 'm2', participants: [participant('me', 'accepted'), participant('b', 'pending')] }), // awaiting others
+    meeting({ id: 'm3', proposed_at: '2026-07-05T14:00:00Z', participants: [participant('me', 'accepted'), participant('c', 'accepted')] }), // upcoming
+    meeting({ id: 'm4', proposed_at: '2026-06-20T14:00:00Z', participants: [participant('me', 'accepted'), participant('d', 'accepted')] }), // past (elapsed)
+    meeting({ id: 'm5', status: 'completed', met_on: '2026-06-10', proposed_at: null, participants: [participant('me', 'accepted'), participant('e', 'accepted')] }), // past (logged)
+    meeting({ id: 'm6', status: 'cancelled', participants: [participant('me', 'pending')] }), // dropped
+    meeting({ id: 'm7', participants: [participant('other1', 'pending'), participant('other2', 'accepted')] }), // I'm not in this one
+    meeting({ id: 'm8', proposed_at: '2026-07-05T14:00:00Z', participants: [participant('me', 'declined'), participant('f', 'accepted')] }), // I declined — must not appear anywhere
   ];
-  const c = categorizeInvites(data, 'a', now);
+  const c = categorizeMeetings(data, 'me', now);
 
-  test('buckets pending by whose turn it is', () => {
-    expect(c.needsMyResponse.map((i) => i.id)).toEqual(['m1']);
-    expect(c.awaitingThem.map((i) => i.id)).toEqual(['m2']);
+  test('needs-my-response: proposed, my status still pending', () => {
+    expect(c.needsMyResponse.map((m) => m.id)).toEqual(['m1']);
   });
-  test('splits accepted into upcoming vs past and includes completed in past', () => {
-    expect(c.upcoming.map((i) => i.id)).toEqual(['m3']);
-    expect(c.past.map((i) => i.id)).toEqual(['m4', 'm5']); // most-recent-first
+  test('awaiting-others: proposed, I accepted, someone else still pending', () => {
+    expect(c.awaitingOthers.map((m) => m.id)).toEqual(['m2']);
   });
-  test('drops declined and cancelled', () => {
-    const ids = [...c.needsMyResponse, ...c.awaitingThem, ...c.upcoming, ...c.past].map((i) => i.id);
+  test('upcoming: proposed, everyone accepted, in the future', () => {
+    expect(c.upcoming.map((m) => m.id)).toEqual(['m3']);
+  });
+  test('past: elapsed accepted meetings and completed logs, most-recent-first', () => {
+    expect(c.past.map((m) => m.id)).toEqual(['m4', 'm5']);
+  });
+  test('drops cancelled and meetings the caller is not part of', () => {
+    const ids = [...c.needsMyResponse, ...c.awaitingOthers, ...c.upcoming, ...c.past].map((m) => m.id);
     expect(ids).not.toContain('m6');
     expect(ids).not.toContain('m7');
+  });
+  test('drops meetings the caller has declined', () => {
+    const ids = [...c.needsMyResponse, ...c.awaitingOthers, ...c.upcoming, ...c.past].map((m) => m.id);
+    expect(ids).not.toContain('m8');
   });
 });

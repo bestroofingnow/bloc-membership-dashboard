@@ -11,6 +11,7 @@ import { EventsTab } from './EventsTab';
 import { ResourcesTab } from './ResourcesTab';
 import { QrTokensTab } from './QrTokensTab';
 import { RosterTab } from './RosterTab';
+import { NetworkingTab } from './NetworkingTab';
 import { SeatMapTab } from './SeatMapTab';
 import { MemberTaxonomyTab } from './MemberTaxonomyTab';
 import { AdminTab } from './AdminTab';
@@ -24,6 +25,7 @@ const COMPONENTS: Record<string, React.ReactNode> = {
   resources: <ResourcesTab />,
   qr: <QrTokensTab />,
   roster: <RosterTab />,
+  networking: <NetworkingTab />,
   seats: <SeatMapTab />,
   taxonomy: <MemberTaxonomyTab />,
   admin: <AdminTab />,

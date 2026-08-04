@@ -7,18 +7,24 @@ export const MEETING_KIND_LABEL: Record<MeetingKind, string> = {
   virtual: 'Virtual',
 };
 
-export type InviteStatus = 'pending' | 'accepted' | 'declined' | 'cancelled' | 'completed';
+export type MeetingStatus = 'proposed' | 'completed' | 'cancelled';
+export type ParticipantStatus = 'pending' | 'accepted' | 'declined';
 
-export interface MeetingInvite {
+export interface Participant {
+  member_id: string;
+  response_status: ParticipantStatus;
+}
+
+export interface Meeting {
   id: string;
-  from_member_id: string;
-  to_member_id: string;
-  proposed_by_member_id: string;
+  organizer_member_id: string;
   kind: MeetingKind;
-  proposed_at: string; // ISO timestamp
+  status: MeetingStatus;
+  proposed_at: string | null; // ISO timestamp; set when scheduled ahead
+  met_on: string | null; // date; set when logged as already-happened
   location: string | null;
   note: string | null;
-  status: InviteStatus;
+  participants: Participant[];
 }
 
 export interface ValidationResult {
@@ -26,92 +32,105 @@ export interface ValidationResult {
   error?: string;
 }
 
-export interface InviteInput {
-  fromId: string | null;
-  toId: string | null;
+export interface MeetingInput {
+  organizerId: string;
+  participantIds: string[]; // everyone EXCEPT the organizer
   kind: string;
-  proposedAt: string | null;
+  proposedAt?: string | null;
+  metOn?: string | null;
   location?: string | null;
 }
 
 /**
- * Validate a proposed 1-to-1 invite. from/to required and distinct, kind in the set,
- * a parseable date/time, location capped. Pure → unit-tested + shared (web/mobile).
+ * Validate a new meeting (proposed ahead of time, or logged after the fact).
+ * organizer + 1+ distinct non-organizer participants required, kind in the
+ * set, location capped, and either proposedAt (schedule) or metOn (log) must
+ * be present. Pure → unit-tested + shared (web/mobile).
  */
-export function validateInvite(input: InviteInput): ValidationResult {
-  if (!input.fromId) return { ok: false, error: 'Missing sender.' };
-  if (!input.toId) return { ok: false, error: 'Pick who you want to meet.' };
-  if (input.fromId === input.toId) return { ok: false, error: "You can't invite yourself." };
+export function validateMeeting(input: MeetingInput): ValidationResult {
+  if (!input.organizerId) return { ok: false, error: 'Missing organizer.' };
+  if (!input.participantIds || input.participantIds.length === 0) {
+    return { ok: false, error: 'Pick at least one other person.' };
+  }
+  if (input.participantIds.includes(input.organizerId)) {
+    return { ok: false, error: "The organizer can't also be a participant." };
+  }
+  if (new Set(input.participantIds).size !== input.participantIds.length) {
+    return { ok: false, error: 'That person is already in this meeting.' };
+  }
   if (!MEETING_KINDS.includes(input.kind as MeetingKind)) {
     return { ok: false, error: 'Pick a meeting type.' };
   }
-  if (!input.proposedAt || Number.isNaN(Date.parse(input.proposedAt))) {
+  const proposedAt = input.proposedAt ?? null;
+  const metOn = input.metOn ?? null;
+  if (!proposedAt && !metOn) return { ok: false, error: 'Pick a date and time.' };
+  if (proposedAt && Number.isNaN(Date.parse(proposedAt))) {
     return { ok: false, error: 'Pick a date and time.' };
+  }
+  if (metOn && Number.isNaN(Date.parse(metOn))) {
+    return { ok: false, error: 'Pick a date.' };
   }
   if ((input.location ?? '').length > 300) return { ok: false, error: 'Location is too long.' };
   return { ok: true };
 }
 
-type InviteCore = Pick<
-  MeetingInvite,
-  'from_member_id' | 'to_member_id' | 'proposed_by_member_id' | 'status'
->;
-
-/**
- * Who must respond to a *pending* invite: the participant who did NOT make the current
- * proposal. Returns null when the invite isn't pending (nothing to respond to).
- */
-export function awaitingMemberId(invite: InviteCore): string | null {
-  if (invite.status !== 'pending') return null;
-  return invite.proposed_by_member_id === invite.from_member_id
-    ? invite.to_member_id
-    : invite.from_member_id;
+/** The caller's own response status, or null if they're not a participant. */
+export function myParticipantStatus(meeting: Meeting, myId: string): ParticipantStatus | null {
+  return meeting.participants.find((p) => p.member_id === myId)?.response_status ?? null;
 }
 
-/** Can this member accept/decline/reschedule right now? (They're the awaiting party.) */
-export function canRespond(invite: InviteCore, memberId: string): boolean {
-  return awaitingMemberId(invite) === memberId;
+/** Only the organizer may cancel a meeting. */
+export function canCancel(meeting: Pick<Meeting, 'organizer_member_id'>, myId: string): boolean {
+  return meeting.organizer_member_id === myId;
 }
 
-/** The other participant, relative to me. */
-export function counterpartId(
-  invite: Pick<MeetingInvite, 'from_member_id' | 'to_member_id'>,
-  myId: string,
-): string {
-  return invite.from_member_id === myId ? invite.to_member_id : invite.from_member_id;
+/** Everyone else has responded (declines don't block "confirmed" — they're just not attending). */
+function allOthersResponded(meeting: Meeting, myId: string): boolean {
+  return meeting.participants
+    .filter((p) => p.member_id !== myId)
+    .every((p) => p.response_status !== 'pending');
 }
 
-export interface CategorizedInvites<T> {
-  needsMyResponse: T[]; // pending, awaiting me
-  awaitingThem: T[]; // pending, awaiting the other party
-  upcoming: T[]; // accepted, in the future
-  past: T[]; // accepted but elapsed, or completed
+export interface CategorizedMeetings<T> {
+  needsMyResponse: T[]; // proposed, my status still pending
+  awaitingOthers: T[]; // proposed, I've accepted, someone else hasn't responded
+  upcoming: T[]; // proposed, everyone's responded, in the future
+  past: T[]; // elapsed, or completed
 }
 
 /**
- * Bucket a member's invites for the UI. Declined/cancelled are dropped. Upcoming is
- * sorted soonest-first; past most-recent-first.
+ * Bucket a member's meetings for the UI. Cancelled meetings and meetings the
+ * caller isn't part of are dropped. Upcoming is sorted soonest-first; past
+ * most-recent-first.
  */
-export function categorizeInvites<T extends MeetingInvite>(
-  invites: T[],
+export function categorizeMeetings<T extends Meeting>(
+  meetings: T[],
   myId: string,
   now: Date = new Date(),
-): CategorizedInvites<T> {
+): CategorizedMeetings<T> {
   const t = now.getTime();
-  const out: CategorizedInvites<T> = { needsMyResponse: [], awaitingThem: [], upcoming: [], past: [] };
-  for (const inv of invites) {
-    if (inv.status === 'declined' || inv.status === 'cancelled') continue;
-    if (inv.status === 'pending') {
-      if (awaitingMemberId(inv) === myId) out.needsMyResponse.push(inv);
-      else out.awaitingThem.push(inv);
-    } else if (inv.status === 'accepted') {
-      if (Date.parse(inv.proposed_at) >= t) out.upcoming.push(inv);
-      else out.past.push(inv);
-    } else if (inv.status === 'completed') {
-      out.past.push(inv);
+  const out: CategorizedMeetings<T> = { needsMyResponse: [], awaitingOthers: [], upcoming: [], past: [] };
+  for (const m of meetings) {
+    if (m.status === 'cancelled') continue;
+    const mine = myParticipantStatus(m, myId);
+    if (mine === null || mine === 'declined') continue;
+    if (m.status === 'completed') {
+      out.past.push(m);
+      continue;
+    }
+    // status === 'proposed'
+    if (mine === 'pending') {
+      out.needsMyResponse.push(m);
+    } else if (!allOthersResponded(m, myId)) {
+      out.awaitingOthers.push(m);
+    } else if (m.proposed_at && Date.parse(m.proposed_at) >= t) {
+      out.upcoming.push(m);
+    } else {
+      out.past.push(m);
     }
   }
-  out.upcoming.sort((a, b) => Date.parse(a.proposed_at) - Date.parse(b.proposed_at));
-  out.past.sort((a, b) => Date.parse(b.proposed_at) - Date.parse(a.proposed_at));
+  const at = (m: T) => Date.parse(m.proposed_at ?? m.met_on ?? '');
+  out.upcoming.sort((a, b) => at(a) - at(b));
+  out.past.sort((a, b) => at(b) - at(a));
   return out;
 }
